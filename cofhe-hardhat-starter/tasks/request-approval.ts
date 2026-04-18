@@ -33,19 +33,16 @@ task('request-approval', 'Grant a lender an encrypted credit approval and reveal
     const Registry = await ethers.getContractFactory('CreditScoreRegistry')
     const registry = Registry.attach(registryAddress)
 
-    // Step 1: Grant the lender an encrypted approval
     console.log('\n[1/3] Granting lender approval (FHE comparison on encrypted score)...')
     const grantTx = await (registry as any).connect(signer).grantLenderApproval(lenderAddress, args.threshold)
     await grantTx.wait()
     console.log(`      Tx: ${grantTx.hash}`)
 
-    // Step 2: Allow public decryption of the approval handle
     console.log('[2/3] Permitting on-chain decryption...')
     const allowTx = await (registry as any).connect(signer).allowApprovalPublic(lenderAddress)
     await allowTx.wait()
     console.log(`      Tx: ${allowTx.hash}`)
 
-    // Step 3: Decrypt via CoFHE SDK and publish result on-chain
     console.log('[3/3] Decrypting via CoFHE threshold network and publishing result...')
     const approvalHandle = await (registry as any).connect(signer).getLenderApproval.staticCall(
       { from: lenderAddress }
