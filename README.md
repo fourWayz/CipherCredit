@@ -156,6 +156,17 @@ After deploying, update [frontend/src/config.ts](frontend/src/config.ts) with th
 
 ---
 
+## Deployed Contracts
+
+### Arbitrum Sepolia
+
+| Contract | Address |
+|---|---|
+| `CreditScoreRegistry` | [`0xfbf61a33ab9eA16D7191d68298D0298B6e62b61c`](https://sepolia.arbiscan.io/address/0xfbf61a33ab9eA16D7191d68298D0298B6e62b61c) |
+| `LendingPool` | [`0xAc5Ee2Aff86732530Ee83B7448bcDAd82811aCF0`](https://sepolia.arbiscan.io/address/0xAc5Ee2Aff86732530Ee83B7448bcDAd82811aCF0) |
+
+---
+
 ## Supported Networks
 
 | Network | Chain ID | CoFHE Support |
