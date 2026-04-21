@@ -40,13 +40,22 @@ export function useLendingPool() {
 
   // ── Current user's loan ─────────────────────────────────────────────────────
 
-  const { data: activeLoan, refetch: refetchLoan } = useReadContract({
+  const { data: activeLoanRaw, refetch: refetchLoan } = useReadContract({
     address: addr,
     abi:     LendingPoolABI,
     functionName: 'loans',
     args:    address ? [address] : undefined,
     query:   { enabled: !!address && !!addr },
   })
+  const activeLoan = activeLoanRaw
+    ? {
+        principal:     activeLoanRaw[0] as bigint,
+        collateral:    activeLoanRaw[1] as bigint,
+        creditApproved: activeLoanRaw[2] as boolean,
+        active:        activeLoanRaw[3] as boolean,
+        issuedAt:      activeLoanRaw[4] as bigint,
+      }
+    : null
 
   const { data: myDeposit } = useReadContract({
     address: addr,
