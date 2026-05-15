@@ -1,11 +1,10 @@
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers'
+import { loadFixture, time } from '@nomicfoundation/hardhat-toolbox/network-helpers'
 import hre from 'hardhat'
 import { Encryptable, FheTypes } from '@cofhe/sdk'
 import { expect } from 'chai'
 
 const TASK_COFHE_MOCKS_DEPLOY = 'task:cofhe-mocks:deploy'
 
-// Helper: expected score for given inputs
 function expectedScore(balance: number, txFreq: number, repayment: number, debt: number) {
   return balance * 25 + txFreq * 20 + repayment * 40 + (100 - debt) * 15
 }
@@ -18,13 +17,19 @@ describe('CreditScoreRegistry', function () {
     const Registry = await hre.ethers.getContractFactory('CreditScoreRegistry')
     const registry = await Registry.connect(deployer).deploy()
 
+    const NFT = await hre.ethers.getContractFactory('CreditTierNFT')
+    const nft = await NFT.connect(deployer).deploy(await registry.getAddress())
+
     const Pool = await hre.ethers.getContractFactory('LendingPool')
-    const pool = await Pool.connect(deployer).deploy(await registry.getAddress())
+    const pool = await Pool.connect(deployer).deploy(
+      await registry.getAddress(),
+      await nft.getAddress(),
+    )
 
     const borrowerClient = await hre.cofhe.createClientWithBatteries(borrower)
     const lenderClient   = await hre.cofhe.createClientWithBatteries(lender)
 
-    return { registry, pool, deployer, borrower, lender, borrowerClient, lenderClient }
+    return { registry, nft, pool, deployer, borrower, lender, borrowerClient, lenderClient }
   }
 
   // ─── Data submission ──────────────────────────────────────────────────────
@@ -88,7 +93,6 @@ describe('CreditScoreRegistry', function () {
         encrypted[0], encrypted[1], encrypted[2], encrypted[3]
       )
 
-      // getMyScore returns the encrypted handle; use mocks.getPlaintext to verify
       const scoreTx = await registry.connect(borrower).getMyScore()
       await scoreTx.wait()
       const scoreHandle = await (registry as any).connect(borrower).getMyScore.staticCall()
@@ -258,17 +262,23 @@ describe('CreditScoreRegistry', function () {
 describe('LendingPool', function () {
   async function deployFixture() {
     await hre.run(TASK_COFHE_MOCKS_DEPLOY)
-    const [deployer, provider, borrower, lender] = await hre.ethers.getSigners()
+    const [deployer, provider, borrower, liquidator] = await hre.ethers.getSigners()
 
     const Registry = await hre.ethers.getContractFactory('CreditScoreRegistry')
     const registry = await Registry.connect(deployer).deploy()
 
+    const NFT = await hre.ethers.getContractFactory('CreditTierNFT')
+    const nft = await NFT.connect(deployer).deploy(await registry.getAddress())
+
     const Pool = await hre.ethers.getContractFactory('LendingPool')
-    const pool = await Pool.connect(deployer).deploy(await registry.getAddress())
+    const pool = await Pool.connect(deployer).deploy(
+      await registry.getAddress(),
+      await nft.getAddress(),
+    )
 
     const borrowerClient = await hre.cofhe.createClientWithBatteries(borrower)
 
-    return { registry, pool, deployer, provider, borrower, lender, borrowerClient }
+    return { registry, nft, pool, deployer, provider, borrower, liquidator, borrowerClient }
   }
 
   it('should accept deposits from liquidity providers', async function () {
@@ -289,6 +299,20 @@ describe('LendingPool', function () {
     const loan = await pool.loans(borrower.address)
     expect(loan.active).to.be.true
     expect(loan.creditApproved).to.be.false
+  })
+
+  it('loan dueDate should be set 30 days from issuedAt', async function () {
+    const { pool, provider, borrower } = await loadFixture(deployFixture)
+    await pool.connect(provider).deposit({ value: hre.ethers.parseEther('10') })
+
+    const before = BigInt(Math.floor(Date.now() / 1000))
+    await pool.connect(borrower).requestLoan(
+      hre.ethers.parseEther('1'), false,
+      { value: hre.ethers.parseEther('1.5') }
+    )
+    const loan    = await pool.loans(borrower.address)
+    const thirtyD = 30n * 24n * 3600n
+    expect(loan.dueDate).to.be.gte(before + thirtyD)
   })
 
   it('should deny a standard loan with insufficient collateral', async function () {
@@ -315,6 +339,67 @@ describe('LendingPool', function () {
 
     await pool.connect(borrower).repayLoan({ value: principal })
     expect((await pool.loans(borrower.address)).active).to.be.false
+  })
+
+  it('repaymentCount should increment after each repay', async function () {
+    const { pool, provider, borrower } = await loadFixture(deployFixture)
+    await pool.connect(provider).deposit({ value: hre.ethers.parseEther('10') })
+
+    expect(await pool.repaymentCount(borrower.address)).to.equal(0n)
+
+    // First loan + repay
+    await pool.connect(borrower).requestLoan(
+      hre.ethers.parseEther('1'), false, { value: hre.ethers.parseEther('1.5') }
+    )
+    await pool.connect(borrower).repayLoan({ value: hre.ethers.parseEther('1') })
+    expect(await pool.repaymentCount(borrower.address)).to.equal(1n)
+
+    // Second loan + repay
+    await pool.connect(borrower).requestLoan(
+      hre.ethers.parseEther('1'), false, { value: hre.ethers.parseEther('1.5') }
+    )
+    await pool.connect(borrower).repayLoan({ value: hre.ethers.parseEther('1') })
+    expect(await pool.repaymentCount(borrower.address)).to.equal(2n)
+  })
+
+  it('should liquidate an overdue loan and pay bounty to liquidator', async function () {
+    const { pool, provider, borrower, liquidator } = await loadFixture(deployFixture)
+    await pool.connect(provider).deposit({ value: hre.ethers.parseEther('10') })
+
+    const principal  = hre.ethers.parseEther('1')
+    const collateral = hre.ethers.parseEther('1.5')
+    await pool.connect(borrower).requestLoan(principal, false, { value: collateral })
+
+    // Should revert before deadline
+    await expect(
+      pool.connect(liquidator).liquidate(borrower.address)
+    ).to.be.revertedWith('LendingPool: loan not yet due')
+
+    // Fast-forward 31 days
+    await time.increase(31 * 24 * 3600)
+
+    const liquidatorBefore = await hre.ethers.provider.getBalance(liquidator.address)
+    const tx = await pool.connect(liquidator).liquidate(borrower.address)
+    const receipt = await tx.wait()
+    const gasUsed = receipt!.gasUsed * receipt!.gasPrice
+
+    // Liquidator received 5% bounty (0.075 ETH from 1.5 ETH collateral)
+    const liquidatorAfter = await hre.ethers.provider.getBalance(liquidator.address)
+    const bounty = hre.ethers.parseEther('1.5') * 5n / 100n
+    expect(liquidatorAfter - liquidatorBefore + gasUsed).to.be.closeTo(bounty, hre.ethers.parseEther('0.001'))
+
+    // Loan cleared, defaultCount incremented
+    expect((await pool.loans(borrower.address)).active).to.be.false
+    expect(await pool.defaultCount(borrower.address)).to.equal(1n)
+  })
+
+  it('maxBorrowable should reflect pool liquidity', async function () {
+    const { pool, provider, borrower } = await loadFixture(deployFixture)
+    await pool.connect(provider).deposit({ value: hre.ethers.parseEther('10') })
+
+    // BASE_LIMIT_BPS = 5000 → 50% of 10 ETH = 5 ETH (no NFT tier)
+    const limit = await pool.maxBorrowable(borrower.address)
+    expect(limit).to.equal(hre.ethers.parseEther('5'))
   })
 
   it('collateralRequired should return 150% for standard and 110% for credit', async function () {
