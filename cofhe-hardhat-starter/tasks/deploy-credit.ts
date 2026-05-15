@@ -2,7 +2,7 @@ import { task } from 'hardhat/config'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { saveDeployment } from './utils'
 
-task('deploy-credit', 'Deploy CreditScoreRegistry, LendingPool, and CreditTierNFT').setAction(
+task('deploy-credit', 'Deploy CreditScoreRegistry, CreditTierNFT, and LendingPool').setAction(
   async (_, hre: HardhatRuntimeEnvironment) => {
     const { ethers, network } = hre
 
@@ -10,7 +10,7 @@ task('deploy-credit', 'Deploy CreditScoreRegistry, LendingPool, and CreditTierNF
     const [deployer] = await ethers.getSigners()
     console.log(`Deploying with account: ${deployer.address}`)
 
-    // CreditScoreRegistry
+    // 1. CreditScoreRegistry
     const Registry = await ethers.getContractFactory('CreditScoreRegistry')
     const registry = await Registry.deploy()
     await registry.waitForDeployment()
@@ -18,15 +18,7 @@ task('deploy-credit', 'Deploy CreditScoreRegistry, LendingPool, and CreditTierNF
     console.log(`CreditScoreRegistry deployed to: ${registryAddress}`)
     saveDeployment(network.name, 'CreditScoreRegistry', registryAddress)
 
-    // LendingPool (depends on registry)
-    const Pool = await ethers.getContractFactory('LendingPool')
-    const pool = await Pool.deploy(registryAddress)
-    await pool.waitForDeployment()
-    const poolAddress = await pool.getAddress()
-    console.log(`LendingPool deployed to: ${poolAddress}`)
-    saveDeployment(network.name, 'LendingPool', poolAddress)
-
-    // CreditTierNFT (depends on registry — reads revealed rates)
+    // 2. CreditTierNFT (depends on registry — must deploy before LendingPool)
     const NFT = await ethers.getContractFactory('CreditTierNFT')
     const nft = await NFT.deploy(registryAddress)
     await nft.waitForDeployment()
@@ -34,8 +26,20 @@ task('deploy-credit', 'Deploy CreditScoreRegistry, LendingPool, and CreditTierNF
     console.log(`CreditTierNFT deployed to: ${nftAddress}`)
     saveDeployment(network.name, 'CreditTierNFT', nftAddress)
 
+    // 3. LendingPool (depends on registry + nft for tier-scaled credit limits)
+    const Pool = await ethers.getContractFactory('LendingPool')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pool = await (Pool as any).deploy(registryAddress, nftAddress)
+    await pool.waitForDeployment()
+    const poolAddress = await pool.getAddress()
+    console.log(`LendingPool deployed to: ${poolAddress}`)
+    saveDeployment(network.name, 'LendingPool', poolAddress)
+
     console.log('\n--- Deployment summary ---')
-    console.log(JSON.stringify({ CreditScoreRegistry: registryAddress, LendingPool: poolAddress, CreditTierNFT: nftAddress }, null, 2))
+    console.log(JSON.stringify(
+      { CreditScoreRegistry: registryAddress, LendingPool: poolAddress, CreditTierNFT: nftAddress },
+      null, 2
+    ))
 
     return { registryAddress, poolAddress, nftAddress }
   },
