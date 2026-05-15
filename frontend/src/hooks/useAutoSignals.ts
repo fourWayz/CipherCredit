@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useAccount, useChainId, usePublicClient } from 'wagmi'
-import { formatEther, parseAbiItem } from 'viem'
+import { formatEther } from 'viem'
 import { LendingPoolABI } from '@/abis/LendingPool'
 import { CONTRACT_ADDRESSES } from '@/config'
 import type { CreditInputs } from './useCreditScore'
@@ -16,6 +16,7 @@ export type SignalMeta = {
   balanceEth:    number
   txCount:       number
   repayments:    number
+  defaults:      number
   hasActiveLoan: boolean
 }
 
@@ -40,7 +41,7 @@ export function useAutoSignals() {
 
       // ── Parallel RPC reads ──────────────────────────────────────────────────
 
-      const [balance, txCount, loanRaw, repayLogs] = await Promise.all([
+      const [balance, txCount, loanRaw, repayCountRaw, defaultCountRaw] = await Promise.all([
         // 1. ETH balance → wealth signal
         publicClient.getBalance({ address }),
 
@@ -57,32 +58,43 @@ export function useAutoSignals() {
             }).catch(() => null)
           : Promise.resolve(null),
 
-        // 4. LoanRepaid events for this address → repayment history
+        // 4. On-chain repayment counter (auto-updated on each successful repay)
         addrs?.pool
-          ? publicClient.getLogs({
-              address:   addrs.pool as `0x${string}`,
-              event:     parseAbiItem('event LoanRepaid(address indexed borrower, uint256 principal, uint256 interest)'),
-              args:      { borrower: address },
-              fromBlock: 'earliest',
-              toBlock:   'latest',
-            }).catch(() => [] as never[])
-          : Promise.resolve([]),
+          ? publicClient.readContract({
+              address: addrs.pool as `0x${string}`,
+              abi:     LendingPoolABI,
+              functionName: 'repaymentCount',
+              args:    [address],
+            }).catch(() => 0n)
+          : Promise.resolve(0n),
+
+        // 5. On-chain default counter (incremented on liquidation)
+        addrs?.pool
+          ? publicClient.readContract({
+              address: addrs.pool as `0x${string}`,
+              abi:     LendingPoolABI,
+              functionName: 'defaultCount',
+              args:    [address],
+            }).catch(() => 0n)
+          : Promise.resolve(0n),
       ])
 
       // ── Normalise each signal to 0-100 ──────────────────────────────────────
 
       const balanceEth    = parseFloat(formatEther(balance))
-      const repayments    = (repayLogs as unknown[]).length
+      const repayments    = Number(repayCountRaw as bigint)
+      const defaults      = Number(defaultCountRaw as bigint)
       const hasActiveLoan = loanRaw ? !!(loanRaw as readonly unknown[])[3] : false
 
       const balanceScore  = clamp(Math.round(balanceEth / BALANCE_CEIL_ETH * 100))
       const txScore       = clamp(Math.round(txCount    / TX_COUNT_CEIL    * 100))
       const repayScore    = clamp(Math.round(repayments / REPAY_CEIL       * 100))
 
-      // Debt ratio: active loan → higher ratio; no loan → small baseline debt proxy
+      // Debt ratio: active loan or defaults raise ratio; healthy balance lowers it
+      const debtPenalty = Math.min(defaults * 10, 30)
       const debtRatio = hasActiveLoan
-        ? clamp(50 + Math.round((1 - balanceEth / BALANCE_CEIL_ETH) * 30))  // 50-80
-        : clamp(Math.round(Math.max(0, 20 - balanceScore / 10)))             // 0-20
+        ? clamp(50 + Math.round((1 - balanceEth / BALANCE_CEIL_ETH) * 30) + debtPenalty)
+        : clamp(Math.round(Math.max(0, 20 - balanceScore / 10)) + debtPenalty)
 
       const inputs: CreditInputs = {
         balance:   balanceScore,
@@ -91,7 +103,7 @@ export function useAutoSignals() {
         debtRatio: debtRatio,
       }
 
-      setMeta({ balanceEth, txCount, repayments, hasActiveLoan })
+      setMeta({ balanceEth, txCount, repayments, defaults, hasActiveLoan })
       setSource('chain')
       setLoading(false)
       return inputs

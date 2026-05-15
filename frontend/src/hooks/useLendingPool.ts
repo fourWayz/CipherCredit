@@ -16,7 +16,7 @@ export function useLendingPool() {
   const { writeContractAsync } = useWriteContract()
   const publicClient = usePublicClient()
 
-  // ── Pool stats ──────────────────────────────────────────────────────────────
+  //  Pool stats 
 
   const { data: liquidity,   refetch: refetchLiquidity } = useReadContract({
     address: addr,
@@ -39,7 +39,12 @@ export function useLendingPool() {
     query:   { enabled: !!addr },
   })
 
-  // ── Current user's loan ─────────────────────────────────────────────────────
+  //  Collateral ratio constants 
+
+  const { data: stdCollateral    } = useReadContract({ address: addr, abi: LendingPoolABI, functionName: 'STANDARD_RATIO', query: { enabled: !!addr } })
+  const { data: creditCollateral } = useReadContract({ address: addr, abi: LendingPoolABI, functionName: 'CREDIT_RATIO',   query: { enabled: !!addr } })
+
+  //  Current user's loan ─
 
   const { data: activeLoanRaw, refetch: refetchLoan } = useReadContract({
     address: addr,
@@ -57,6 +62,7 @@ export function useLendingPool() {
         active:          activeLoanRaw[3] as boolean,
         issuedAt:        activeLoanRaw[4] as bigint,
         interestRateBps: activeLoanRaw[5] as number,
+        dueDate:         activeLoanRaw[6] as bigint,
       }
     : null
 
@@ -86,19 +92,38 @@ export function useLendingPool() {
     query:   { enabled: !!address && !!addr },
   })
 
-  // ── Collateral ratio constants ──────────────────────────────────────────────
+  //  Wave 3: repayment history, default count, credit limit ─
 
-  const { data: stdCollateral   } = useReadContract({ address: addr, abi: LendingPoolABI, functionName: 'STANDARD_RATIO', query: { enabled: !!addr } })
-  const { data: creditCollateral} = useReadContract({ address: addr, abi: LendingPoolABI, functionName: 'CREDIT_RATIO',   query: { enabled: !!addr } })
+  const { data: myRepaymentCount, refetch: refetchRepaymentCount } = useReadContract({
+    address: addr,
+    abi:     LendingPoolABI,
+    functionName: 'repaymentCount',
+    args:    address ? [address] : undefined,
+    query:   { enabled: !!address && !!addr },
+  })
 
-  // ── Gas helper ───────────────────────────────────────────────────────────────
+  const { data: myDefaultCount } = useReadContract({
+    address: addr,
+    abi:     LendingPoolABI,
+    functionName: 'defaultCount',
+    args:    address ? [address] : undefined,
+    query:   { enabled: !!address && !!addr },
+  })
+
+  const { data: maxBorrowableRaw, refetch: refetchMaxBorrowable } = useReadContract({
+    address: addr,
+    abi:     LendingPoolABI,
+    functionName: 'maxBorrowable',
+    args:    address ? [address] : undefined,
+    query:   { enabled: !!address && !!addr },
+  })
+
+  //  Gas helper ─
 
   const gasFees = useCallback(async () => {
     if (!publicClient) return {}
     const fees = await publicClient.estimateFeesPerGas()
     const fee = fees.maxFeePerGas ?? 0n
-    // Priority fee is null on many L2s; use 10% of maxFeePerGas so MetaMask
-    // doesn't reject the tx as "unavailable fee" due to a zero tip.
     const tip = (fees.maxPriorityFeePerGas != null && fees.maxPriorityFeePerGas > 0n)
       ? fees.maxPriorityFeePerGas
       : fee > 0n ? fee / 10n : 1_000_000n
@@ -108,7 +133,7 @@ export function useLendingPool() {
     }
   }, [publicClient])
 
-  // ── Actions ─────────────────────────────────────────────────────────────────
+  //  Actions ─
 
   const deposit = useCallback(async (amountEth: string) => {
     if (!addr) throw new Error('Pool not deployed on this chain')
@@ -140,15 +165,12 @@ export function useLendingPool() {
   ) => {
     if (!addr || !address) throw new Error('Pool not deployed on this chain')
     const principal = parseEther(principalEth)
-    // Replicate the contract's integer formula to avoid float truncation errors.
-    // toFixed(4) on 0.0003*1.5=0.00045 gives "0.0004", which is less than required.
-    const ratio      = useCredit
+    const ratio     = useCredit
       ? (creditCollateral != null ? BigInt(creditCollateral as bigint) : 110n)
       : (stdCollateral    != null ? BigInt(stdCollateral as bigint)    : 150n)
     const collateral = (principal * ratio) / 100n
 
-    // Dry-run to catch contract logic reverts before opening MetaMask.
-    // Skip balance/gas errors — those are overly conservative in simulation.
+    // Dry-run to surface contract logic reverts before opening MetaMask.
     try {
       await publicClient!.simulateContract({
         address: addr,
@@ -179,9 +201,9 @@ export function useLendingPool() {
       ...(await gasFees()),
     })
     if (publicClient) await publicClient.waitForTransactionReceipt({ hash })
-    await refetchLoan()
+    await Promise.all([refetchLoan(), refetchMaxBorrowable()])
     return hash
-  }, [addr, address, stdCollateral, creditCollateral, writeContractAsync, gasFees, publicClient, refetchLoan])
+  }, [addr, address, stdCollateral, creditCollateral, writeContractAsync, gasFees, publicClient, refetchLoan, refetchMaxBorrowable])
 
   const repayLoan = useCallback(async () => {
     if (!addr || repaymentDue == null) throw new Error('Pool not deployed or no active loan')
@@ -194,9 +216,21 @@ export function useLendingPool() {
       ...(await gasFees()),
     })
     if (publicClient) await publicClient.waitForTransactionReceipt({ hash })
-    await refetchLoan()
+    await Promise.all([refetchLoan(), refetchRepaymentCount(), refetchMaxBorrowable()])
     return hash
-  }, [addr, repaymentDue, writeContractAsync, gasFees, publicClient, refetchLoan])
+  }, [addr, repaymentDue, writeContractAsync, gasFees, publicClient, refetchLoan, refetchRepaymentCount, refetchMaxBorrowable])
+
+  const liquidate = useCallback(async (borrowerAddr: string) => {
+    if (!addr) throw new Error('Pool not deployed on this chain')
+    const hash = await writeContractAsync({
+      address: addr,
+      abi:     LendingPoolABI,
+      functionName: 'liquidate',
+      args:    [borrowerAddr as `0x${string}`],
+      ...(await gasFees()),
+    })
+    return hash
+  }, [addr, writeContractAsync, gasFees])
 
   return {
     addr,
@@ -207,11 +241,15 @@ export function useLendingPool() {
     accruedInterest,
     repaymentDue,
     myDeposit,
+    myRepaymentCount: myRepaymentCount != null ? Number(myRepaymentCount) : 0,
+    myDefaultCount:   myDefaultCount   != null ? Number(myDefaultCount)   : 0,
+    maxBorrowable:    maxBorrowableRaw as bigint | undefined,
     standardRatio: stdCollateral    ? Number(stdCollateral)    : 150,
     creditRatio:   creditCollateral ? Number(creditCollateral) : 110,
     deposit,
     withdraw,
     requestLoan,
     repayLoan,
+    liquidate,
   }
 }

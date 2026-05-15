@@ -55,6 +55,39 @@ function SignalRow({ label, value, hint }: { label: string; value: number; hint:
   )
 }
 
+function DueDateBadge({ dueDate }: { dueDate: bigint }) {
+  const dueDateMs  = Number(dueDate) * 1000
+  const now        = Date.now()
+  const isOverdue  = now > dueDateMs
+  const msLeft     = dueDateMs - now
+  const daysLeft   = Math.floor(msLeft / (1000 * 60 * 60 * 24))
+  const hoursLeft  = Math.floor((msLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+
+  if (isOverdue) {
+    return (
+      <div className="flex justify-between text-sm">
+        <span className="text-white/50">Due date</span>
+        <span className="text-red-400 font-semibold">
+          OVERDUE — {new Date(dueDateMs).toLocaleDateString()} ⚠
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex justify-between text-sm">
+      <span className="text-white/50">Due date</span>
+      <span className={daysLeft <= 3 ? 'text-yellow-400' : 'text-white/70'}>
+        {new Date(dueDateMs).toLocaleDateString()}
+        {' '}
+        <span className="text-white/40 text-xs">
+          ({daysLeft > 0 ? `${daysLeft}d ${hoursLeft}h left` : `${hoursLeft}h left`})
+        </span>
+      </span>
+    </div>
+  )
+}
+
 export default function BorrowerPage() {
   const { isConnected } = useAccount()
   const chainId          = useChainId()
@@ -75,6 +108,7 @@ export default function BorrowerPage() {
   const {
     activeLoan, accruedInterest, repaymentDue,
     standardRatio, creditRatio,
+    myRepaymentCount, myDefaultCount, maxBorrowable,
     requestLoan, repayLoan,
   } = useLendingPool()
 
@@ -85,7 +119,7 @@ export default function BorrowerPage() {
   const [fetched,     setFetched]     = useState(false)
   const [nftStatus,   setNftStatus]   = useState('')
   const [nftError,    setNftError]    = useState('')
-  const [loanEth,     setLoanEth]     = useState('0.1')
+  const [loanEth,     setLoanEth]     = useState('0.001')
   const [useCredit,   setUseCredit]   = useState(false)
   const [grantStatus, setGrantStatus] = useState('')
   const [loanStatus,   setLoanStatus]  = useState<'idle' | 'pending' | 'done' | 'error'>('idle')
@@ -96,6 +130,9 @@ export default function BorrowerPage() {
   const preview        = previewScore(inputs)
   const estimatedRate  = previewRate(inputs)
   const meetsThreshold = preview >= MIN_CREDIT_THRESHOLD
+
+  const fmtEth = (v: bigint | undefined) =>
+    v != null ? parseFloat(formatEther(v)).toFixed(6).replace(/\.?0+$/, '') : '—'
 
   async function handleAutoFetch() {
     const result = await fetchSignals()
@@ -143,6 +180,9 @@ export default function BorrowerPage() {
   }
 
   const canRequestCreditLoan = (hasData || submitStatus === 'done') && !!rateRevealed
+  const isOverdue = activeLoan?.active && activeLoan.dueDate != null
+    ? Date.now() > Number(activeLoan.dueDate) * 1000
+    : false
 
   if (!isConnected) {
     return (
@@ -173,6 +213,50 @@ export default function BorrowerPage() {
         </p>
       </div>
 
+      {/* ── Repayment history & credit stats bar ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-1">
+          <div className="text-xs text-white/40 uppercase tracking-wider">Repayments</div>
+          <div className="text-2xl font-bold text-green-400">{myRepaymentCount}</div>
+          <div className="text-xs text-white/30">on-chain history</div>
+        </div>
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-1">
+          <div className="text-xs text-white/40 uppercase tracking-wider">Defaults</div>
+          <div className={`text-2xl font-bold ${myDefaultCount > 0 ? 'text-red-400' : 'text-white/50'}`}>{myDefaultCount}</div>
+          <div className="text-xs text-white/30">liquidations received</div>
+        </div>
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-1">
+          <div className="text-xs text-white/40 uppercase tracking-wider">Credit Limit</div>
+          <div className="text-2xl font-bold text-brand-400">{fmtEth(maxBorrowable)}</div>
+          <div className="text-xs text-white/30">ETH max borrow</div>
+        </div>
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-1">
+          <div className="text-xs text-white/40 uppercase tracking-wider">Active Loan</div>
+          <div className={`text-2xl font-bold ${activeLoan?.active ? (isOverdue ? 'text-red-400' : 'text-yellow-400') : 'text-white/30'}`}>
+            {activeLoan?.active ? (isOverdue ? 'Overdue' : 'Active') : 'None'}
+          </div>
+          <div className="text-xs text-white/30">
+            {activeLoan?.active && activeLoan.dueDate != null
+              ? `due ${new Date(Number(activeLoan.dueDate) * 1000).toLocaleDateString()}`
+              : 'no open position'}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Overdue warning banner ── */}
+      {isOverdue && (
+        <div className="bg-red-900/30 border border-red-700 rounded-2xl p-4 flex items-center gap-3">
+          <div className="text-2xl">⚠️</div>
+          <div>
+            <p className="font-semibold text-red-300">Your loan is overdue</p>
+            <p className="text-sm text-red-400/70 mt-0.5">
+              Anyone can now liquidate it. Repay immediately to avoid losing your collateral
+              and receiving a default on your credit history.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Credit Tier NFT banner ── */}
       {nftDeployed && (
         <div className={`border rounded-2xl p-5 ${TIER_BG[tier]}`}>
@@ -189,6 +273,11 @@ export default function BorrowerPage() {
                 </div>
                 <p className="text-sm text-white/40 mt-0.5">
                   Soul-bound · on-chain SVG · {totalMinted?.toString() ?? '—'} total minted
+                  {hasMinted && (
+                    <span className="ml-2 text-brand-400">
+                      · {TIER_LABELS[tier] === 'Gold' ? '2×' : TIER_LABELS[tier] === 'Silver' ? '1.5×' : '1.25×'} credit limit
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
@@ -252,12 +341,12 @@ export default function BorrowerPage() {
                 </div>
                 <div className="bg-white/5 rounded-lg px-3 py-1.5 text-xs">
                   <span className="text-white/40">Repayments</span>
-                  <span className="font-mono text-white ml-2">{meta.repayments}</span>
+                  <span className="font-mono text-green-400 ml-2">{meta.repayments}</span>
                 </div>
                 <div className="bg-white/5 rounded-lg px-3 py-1.5 text-xs">
-                  <span className="text-white/40">Active loan</span>
-                  <span className={`font-mono ml-2 ${meta.hasActiveLoan ? 'text-yellow-400' : 'text-green-400'}`}>
-                    {meta.hasActiveLoan ? 'Yes' : 'None'}
+                  <span className="text-white/40">Defaults</span>
+                  <span className={`font-mono ml-2 ${meta.defaults > 0 ? 'text-red-400' : 'text-white/50'}`}>
+                    {meta.defaults}
                   </span>
                 </div>
               </div>
@@ -361,7 +450,6 @@ export default function BorrowerPage() {
               FHE computes your exact APR from the encrypted score — the pool never sees your data, only the derived rate.
             </p>
 
-            {/* Rate display */}
             {rateRevealed && revealedRate != null ? (
               <div className="bg-brand-900/50 border border-brand-700 rounded-xl p-4 text-center">
                 <div className="text-xs text-brand-400 uppercase tracking-wider mb-1">Your personal APR</div>
@@ -380,7 +468,6 @@ export default function BorrowerPage() {
               </div>
             )}
 
-            {/* Status indicator during computation */}
             {(rateStatus === 'computing' || rateStatus === 'revealing') && (
               <div className="flex items-center gap-2 text-sm text-brand-300">
                 <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -441,6 +528,9 @@ export default function BorrowerPage() {
                     {activeLoan.creditApproved ? ' (credit tier)' : ' (standard)'}
                   </span>
                 </div>
+                {activeLoan.dueDate != null && (
+                  <DueDateBadge dueDate={activeLoan.dueDate} />
+                )}
                 {accruedInterest != null && (
                   <div className="flex justify-between text-sm">
                     <span className="text-white/50">Accrued interest</span>
@@ -464,9 +554,13 @@ export default function BorrowerPage() {
                     finally { setRepayPending(false) }
                   }}
                   disabled={repaymentDue == null || repayPending}
-                  className="w-full bg-red-700 hover:bg-red-600 disabled:opacity-40 text-white font-semibold py-3 rounded-xl transition-colors"
+                  className={`w-full font-semibold py-3 rounded-xl transition-colors ${
+                    isOverdue
+                      ? 'bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white animate-pulse'
+                      : 'bg-red-700 hover:bg-red-600 disabled:opacity-40 text-white'
+                  }`}
                 >
-                  {repayPending ? 'Repaying…' : 'Repay Loan (principal + interest)'}
+                  {repayPending ? 'Repaying…' : isOverdue ? 'Repay NOW (overdue!)' : 'Repay Loan (principal + interest)'}
                 </button>
                 {repayError && <p className="text-red-400 text-sm">{repayError}</p>}
               </div>
@@ -475,11 +569,21 @@ export default function BorrowerPage() {
                 <div>
                   <label className="text-sm text-white/60 block mb-1">Loan amount (ETH)</label>
                   <input
-                    type="number" step="0.01" min="0"
+                    type="number" step="0.0001" min="0"
                     value={loanEth}
                     onChange={e => setLoanEth(e.target.value)}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
                   />
+                  {maxBorrowable != null && (
+                    <p className="text-xs text-white/30 mt-1">
+                      Credit limit: <span className="text-brand-400">{fmtEth(maxBorrowable)} ETH</span>
+                      {hasMinted && TIER_LABELS[tier] !== 'None' && (
+                        <span className="text-white/40 ml-1">
+                          ({TIER_LABELS[tier]} tier bonus applied)
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </div>
 
                 <label className="flex items-center gap-3 cursor-pointer">
@@ -518,6 +622,10 @@ export default function BorrowerPage() {
                         ? `${bpsToPercent(Number(revealedRate))} %`
                         : useCredit ? 'Reveal rate first' : '15.00 %'}
                     </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-white/50">Loan term</span>
+                    <span className="font-mono text-white/50">30 days</span>
                   </div>
                 </div>
 
