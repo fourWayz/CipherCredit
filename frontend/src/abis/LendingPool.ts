@@ -1,9 +1,14 @@
-export const LendingPoolABI =  [
+export const [
     {
       "inputs": [
         {
           "internalType": "address",
           "name": "_registry",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_nft",
           "type": "address"
         }
       ],
@@ -61,9 +66,46 @@ export const LendingPoolABI =  [
           "internalType": "uint32",
           "name": "interestRateBps",
           "type": "uint32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "dueDate",
+          "type": "uint256"
         }
       ],
       "name": "LoanIssued",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "borrower",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "liquidator",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "collateral",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "deficit",
+          "type": "uint256"
+        }
+      ],
+      "name": "LoanLiquidated",
       "type": "event"
     },
     {
@@ -85,6 +127,12 @@ export const LendingPoolABI =  [
           "indexed": false,
           "internalType": "uint256",
           "name": "interest",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newRepaymentCount",
           "type": "uint256"
         }
       ],
@@ -112,6 +160,19 @@ export const LendingPoolABI =  [
     },
     {
       "inputs": [],
+      "name": "BASE_LIMIT_BPS",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "BASE_RATE_BPS",
       "outputs": [
         {
@@ -126,6 +187,32 @@ export const LendingPoolABI =  [
     {
       "inputs": [],
       "name": "CREDIT_RATIO",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "LIQUIDATOR_BOUNTY",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "LOAN_DURATION",
       "outputs": [
         {
           "internalType": "uint256",
@@ -200,6 +287,25 @@ export const LendingPoolABI =  [
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "defaultCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "deposit",
       "outputs": [],
@@ -223,6 +329,19 @@ export const LendingPoolABI =  [
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "borrower",
+          "type": "address"
+        }
+      ],
+      "name": "liquidate",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -264,6 +383,43 @@ export const LendingPoolABI =  [
           "internalType": "uint32",
           "name": "interestRateBps",
           "type": "uint32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "dueDate",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "borrower",
+          "type": "address"
+        }
+      ],
+      "name": "maxBorrowable",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "nft",
+      "outputs": [
+        {
+          "internalType": "contract CreditTierNFT",
+          "name": "",
+          "type": "address"
         }
       ],
       "stateMutability": "view",
@@ -319,6 +475,25 @@ export const LendingPoolABI =  [
       "name": "repayLoan",
       "outputs": [],
       "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "repaymentCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -401,4 +576,5 @@ export const LendingPoolABI =  [
       "stateMutability": "payable",
       "type": "receive"
     }
-  ] as const
+  ]
+ as const
