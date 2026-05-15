@@ -1,4 +1,4 @@
-export const [
+export const LendingPoolABI = [
     {
       "inputs": [
         {
@@ -576,5 +576,4 @@ export const [
       "stateMutability": "payable",
       "type": "receive"
     }
-  ]
- as const
+  ] as const

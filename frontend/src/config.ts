@@ -5,9 +5,9 @@ type Addresses = { registry: `0x${string}`; pool: `0x${string}`; nft: `0x${strin
 export const CONTRACT_ADDRESSES: Record<number, Addresses> = {
   // Arbitrum Sepolia (chainId 421614)
   [arbitrumSepolia.id]: {
-    registry: '0x6C0E2b4C44ed9F3ED057a2fdF1dE4c53Ec997567',
-    pool:     '0xa646663c7D269363c62198EFb1d69Fc1d24e298B',
-    nft:      '0x7b5353c1c76f0fBdF40000DF272Ee81A3e9b7C9F',
+    registry: '0x5251f7e0890d02001cFeD2191924922D285579F1',
+    pool:     '0xD49e2362B08a65C5B8eB77bEdD153E60D8Bceda8',
+    nft:      '0x02ABEC33b433f8370b24b55f4caA6412E3D4E0B3',
   },
   // Base Sepolia (chainId 84532)
   [baseSepolia.id]: {
