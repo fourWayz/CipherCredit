@@ -10,7 +10,7 @@ task('deploy-credit', 'Deploy CreditScoreRegistry, CreditTierNFT, and LendingPoo
     const [deployer] = await ethers.getSigners()
     console.log(`Deploying with account: ${deployer.address}`)
 
-    // 1. CreditScoreRegistry
+    // CreditScoreRegistry
     const Registry = await ethers.getContractFactory('CreditScoreRegistry')
     const registry = await Registry.deploy()
     await registry.waitForDeployment()
@@ -18,7 +18,7 @@ task('deploy-credit', 'Deploy CreditScoreRegistry, CreditTierNFT, and LendingPoo
     console.log(`CreditScoreRegistry deployed to: ${registryAddress}`)
     saveDeployment(network.name, 'CreditScoreRegistry', registryAddress)
 
-    // 2. CreditTierNFT (depends on registry — must deploy before LendingPool)
+    // CreditTierNFT
     const NFT = await ethers.getContractFactory('CreditTierNFT')
     const nft = await NFT.deploy(registryAddress)
     await nft.waitForDeployment()
@@ -26,7 +26,7 @@ task('deploy-credit', 'Deploy CreditScoreRegistry, CreditTierNFT, and LendingPoo
     console.log(`CreditTierNFT deployed to: ${nftAddress}`)
     saveDeployment(network.name, 'CreditTierNFT', nftAddress)
 
-    // 3. LendingPool (depends on registry + nft for tier-scaled credit limits)
+    // LendingPool 
     const Pool = await ethers.getContractFactory('LendingPool')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pool = await (Pool as any).deploy(registryAddress, nftAddress)
