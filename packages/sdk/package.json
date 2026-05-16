@@ -9,20 +9,23 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types":   "./dist/index.d.ts",
       "import":  "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types":   "./dist/index.d.ts"
+      "require": "./dist/index.js"
     },
     "./react": {
+      "types":   "./dist/react/index.d.ts",
       "import":  "./dist/react/index.mjs",
-      "require": "./dist/react/index.js",
-      "types":   "./dist/react/index.d.ts"
+      "require": "./dist/react/index.js"
     }
   },
-  "files": ["dist", "src"],
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
-    "build":      "tsup src/index.ts src/react/index.ts --format cjs,esm --dts --clean",
-    "dev":        "tsup src/index.ts src/react/index.ts --format cjs,esm --dts --watch",
+    "build": "tsup src/index.ts src/react/index.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts src/react/index.ts --format cjs,esm --dts --watch",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -33,21 +36,35 @@
     "wagmi": "^2.0.0"
   },
   "peerDependenciesMeta": {
-    "react": { "optional": true },
-    "wagmi": { "optional": true }
+    "react": {
+      "optional": true
+    },
+    "wagmi": {
+      "optional": true
+    }
   },
   "devDependencies": {
-    "tsup":      "^8.0.0",
+    "@types/react": "^19.2.14",
+    "react": "^18.0.0",
+    "tsup": "^8.0.0",
     "typescript": "^5.3.0",
-    "react":     "^18.0.0",
-    "wagmi":     "^2.0.0"
+    "wagmi": "^2.0.0"
   },
   "keywords": [
-    "fhe", "fhenix", "cofhe", "defi", "credit", "privacy",
-    "web3", "ethereum", "arbitrum", "lending", "ciphercredit"
+    "fhe",
+    "fhenix",
+    "cofhe",
+    "defi",
+    "credit",
+    "privacy",
+    "web3",
+    "ethereum",
+    "arbitrum",
+    "lending",
+    "ciphercredit"
   ],
   "repository": {
     "type": "git",
-    "url":  "https://github.com/your-org/ciphercredit"
+    "url": "https://github.com/fourWayz/CipherCredit"
   }
 }
