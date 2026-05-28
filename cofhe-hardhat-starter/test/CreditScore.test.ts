@@ -21,9 +21,11 @@ describe('CreditScoreRegistry', function () {
     const nft = await NFT.connect(deployer).deploy(await registry.getAddress())
 
     const Pool = await hre.ethers.getContractFactory('LendingPool')
-    const pool = await Pool.connect(deployer).deploy(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pool = await (Pool as any).connect(deployer).deploy(
       await registry.getAddress(),
       await nft.getAddress(),
+      deployer.address,
     )
 
     const borrowerClient = await hre.cofhe.createClientWithBatteries(borrower)
@@ -271,9 +273,12 @@ describe('LendingPool', function () {
     const nft = await NFT.connect(deployer).deploy(await registry.getAddress())
 
     const Pool = await hre.ethers.getContractFactory('LendingPool')
-    const pool = await Pool.connect(deployer).deploy(
+    // Wave 4: constructor now requires feeRecipient (deployer collects fees in tests)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pool = await (Pool as any).connect(deployer).deploy(
       await registry.getAddress(),
       await nft.getAddress(),
+      deployer.address,
     )
 
     const borrowerClient = await hre.cofhe.createClientWithBatteries(borrower)
@@ -281,10 +286,17 @@ describe('LendingPool', function () {
     return { registry, nft, pool, deployer, provider, borrower, liquidator, borrowerClient }
   }
 
-  it('should accept deposits from liquidity providers', async function () {
+  it('should accept deposits and mint shares 1:1 on first deposit', async function () {
     const { pool, provider } = await loadFixture(deployFixture)
     await pool.connect(provider).deposit({ value: hre.ethers.parseEther('10') })
-    expect(await pool.providerDeposits(provider.address)).to.equal(hre.ethers.parseEther('10'))
+    expect(await pool.providerShares(provider.address)).to.equal(hre.ethers.parseEther('10'))
+    expect(await pool.totalLPBalance()).to.equal(hre.ethers.parseEther('10'))
+  })
+
+  it('providerBalance should equal deposit before any loans', async function () {
+    const { pool, provider } = await loadFixture(deployFixture)
+    await pool.connect(provider).deposit({ value: hre.ethers.parseEther('10') })
+    expect(await pool.providerBalance(provider.address)).to.equal(hre.ethers.parseEther('10'))
   })
 
   it('should issue a standard loan at 150% collateral', async function () {
@@ -407,5 +419,127 @@ describe('LendingPool', function () {
     const principal = hre.ethers.parseEther('1')
     expect(await pool.collateralRequired(principal, false)).to.equal(hre.ethers.parseEther('1.5'))
     expect(await pool.collateralRequired(principal, true)).to.equal(hre.ethers.parseEther('1.1'))
+  })
+
+  it('providerBalance increases after a repayment (LP earns yield)', async function () {
+    const { pool, provider, borrower } = await loadFixture(deployFixture)
+    await pool.connect(provider).deposit({ value: hre.ethers.parseEther('10') })
+
+    const balanceBefore = await pool.providerBalance(provider.address)
+
+    // Borrow and immediately repay with a small overpayment to simulate interest
+    await pool.connect(borrower).requestLoan(
+      hre.ethers.parseEther('1'), false, { value: hre.ethers.parseEther('1.5') }
+    )
+    // Advance time so interest accrues (1 day)
+    await time.increase(24 * 3600)
+
+    const interest = await pool.getAccruedInterest(borrower.address)
+    const totalDue = hre.ethers.parseEther('1') + interest
+    await pool.connect(borrower).repayLoan({ value: totalDue })
+
+    const balanceAfter = await pool.providerBalance(provider.address)
+    // Provider balance should have grown (90% of interest credited to LP pool)
+    expect(balanceAfter).to.be.gt(balanceBefore)
+  })
+
+  it('lpUtilisation should reflect outstanding loans as % of LP capital', async function () {
+    const { pool, provider, borrower } = await loadFixture(deployFixture)
+    await pool.connect(provider).deposit({ value: hre.ethers.parseEther('10') })
+
+    // No loans → 0% utilisation
+    expect(await pool.lpUtilisation()).to.equal(0n)
+
+    await pool.connect(borrower).requestLoan(
+      hre.ethers.parseEther('1'), false, { value: hre.ethers.parseEther('1.5') }
+    )
+
+    // 1 ETH borrowed from 10 ETH LP pool → 10% utilisation (1000 bps)
+    expect(await pool.lpUtilisation()).to.equal(1_000n)
+  })
+
+  it('protocol fee accumulates in unclaimedFees after repayment', async function () {
+    const { pool, provider, borrower, deployer } = await loadFixture(deployFixture)
+    await pool.connect(provider).deposit({ value: hre.ethers.parseEther('10') })
+
+    await pool.connect(borrower).requestLoan(
+      hre.ethers.parseEther('1'), false, { value: hre.ethers.parseEther('1.5') }
+    )
+    await time.increase(24 * 3600)
+
+    const interest = await pool.getAccruedInterest(borrower.address)
+    const totalDue = hre.ethers.parseEther('1') + interest
+    await pool.connect(borrower).repayLoan({ value: totalDue })
+
+    const fees = await pool.unclaimedFees()
+    // 10% of interest should be in unclaimedFees
+    const expectedFee = (interest * 1_000n) / 10_000n
+    expect(fees).to.equal(expectedFee)
+
+    // feeRecipient (deployer) can claim
+    const before = await hre.ethers.provider.getBalance(deployer.address)
+    const tx      = await pool.connect(deployer).claimFees()
+    const receipt = await tx.wait()
+    const gasUsed = receipt!.gasUsed * receipt!.gasPrice
+    const after   = await hre.ethers.provider.getBalance(deployer.address)
+    expect(after - before + gasUsed).to.equal(fees)
+    expect(await pool.unclaimedFees()).to.equal(0n)
+  })
+})
+
+describe('CreditScoreRegistry — verifyCreditTier', function () {
+  async function deployFixture() {
+    await hre.run(TASK_COFHE_MOCKS_DEPLOY)
+    const [deployer, borrower] = await hre.ethers.getSigners()
+
+    const Registry = await hre.ethers.getContractFactory('CreditScoreRegistry')
+    const registry = await Registry.connect(deployer).deploy()
+
+    const borrowerClient = await hre.cofhe.createClientWithBatteries(borrower)
+    return { registry, deployer, borrower, borrowerClient }
+  }
+
+  it('returns false when borrower has no data', async function () {
+    const { registry, borrower } = await loadFixture(deployFixture)
+    expect(await registry.verifyCreditTier(borrower.address, 1, 0)).to.be.false
+  })
+
+  it('returns true for Bronze (minTier=1) after rate is revealed for a credit-approved borrower', async function () {
+    const { registry, borrower, borrowerClient } = await loadFixture(deployFixture)
+
+    // score = 80*25+70*20+90*40+80*15 = 2000+1400+3600+1200 = 8200 → Bronze+
+    const enc = await borrowerClient.encryptInputs([
+      Encryptable.uint32(80n), Encryptable.uint32(70n),
+      Encryptable.uint32(90n), Encryptable.uint32(20n),
+    ]).execute()
+    await registry.connect(borrower).submitCreditData(enc[0], enc[1], enc[2], enc[3])
+    await registry.connect(borrower).computePersonalRate()
+    // set a Bronze-tier rate directly (1 400 bps > 1 033, ≤ 1 383 → actually Silver)
+    await registry.connect(borrower).setPersonalRateDirect(1_200) // Silver-tier rate
+
+    // minTier 1 = Bronze, maxAge 0 = no freshness check
+    expect(await registry.verifyCreditTier(borrower.address, 1, 0)).to.be.true
+    // minTier 3 = Gold — should fail for Silver rate
+    expect(await registry.verifyCreditTier(borrower.address, 3, 0)).to.be.false
+  })
+
+  it('returns false when data is older than maxAge', async function () {
+    const { registry, borrower, borrowerClient } = await loadFixture(deployFixture)
+
+    const enc = await borrowerClient.encryptInputs([
+      Encryptable.uint32(80n), Encryptable.uint32(70n),
+      Encryptable.uint32(90n), Encryptable.uint32(20n),
+    ]).execute()
+    await registry.connect(borrower).submitCreditData(enc[0], enc[1], enc[2], enc[3])
+    await registry.connect(borrower).computePersonalRate()
+    await registry.connect(borrower).setPersonalRateDirect(1_200)
+
+    // Fast-forward 31 days — data is now stale
+    await time.increase(31 * 24 * 3600)
+
+    const thirtyDayWindow = 30 * 24 * 3600
+    expect(await registry.verifyCreditTier(borrower.address, 1, thirtyDayWindow)).to.be.false
+    // No freshness check → still passes
+    expect(await registry.verifyCreditTier(borrower.address, 1, 0)).to.be.true
   })
 })
