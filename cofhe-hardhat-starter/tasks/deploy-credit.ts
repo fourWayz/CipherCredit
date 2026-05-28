@@ -31,8 +31,7 @@ task('deploy-credit', 'Deploy CreditScoreRegistry, CreditTierNFT, and LendingPoo
     console.log(`CreditTierNFT deployed to: ${nftAddress}`)
     saveDeployment(network.name, 'CreditTierNFT', nftAddress)
 
-    // 3. LendingPool (depends on registry + nft; Wave 4 adds feeRecipient)
-    // TypeChain types update after `pnpm hardhat compile` — cast until then
+    // LendingPool 
     const Pool = await ethers.getContractFactory('LendingPool')
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pool = await (Pool as any).deploy(registryAddress, nftAddress, feeRecipient)
