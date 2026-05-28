@@ -6,25 +6,10 @@ import "@fhenixprotocol/cofhe-contracts/FHE.sol";
 /**
  * @title CreditScoreRegistry
  * @notice Privacy-preserving on-chain credit scoring using Fully Homomorphic Encryption.
- *
- * Users submit four encrypted financial signals (each normalised 0-100).
- * The contract computes a weighted score entirely in FHE — the numeric value is
- * never revealed unless the user explicitly requests decryption.
- *
- * Lenders receive only an encrypted pass/fail ebool; they learn nothing about
- * the underlying financial data or the numeric score.
- *
- * Score formula  (max = 10 000):
- *   score = balance*25 + txFrequency*20 + repaymentHistory*40 + (100-debtRatio)*15
- *
- * Dynamic rate formula (all FHE, no on-chain division):
- *   rateScaled = BASE_RATE_SCALED - safeExcess * DISCOUNT_NUM
- *   rateBps    = rateScaled / RATE_SCALE   (done off-chain at reveal time)
- *   Range: 15.00% (score=7000) → 8.00% (score=10000)
  */
 contract CreditScoreRegistry {
 
-    // ─── Encrypted data per borrower ─────────────────────────────────────────
+    //  Encrypted data per borrower 
 
     struct CreditData {
         euint32 encBalance;      // portfolio / wallet balance score  (0-100)
@@ -35,7 +20,7 @@ contract CreditScoreRegistry {
         uint256 updatedAt;
     }
 
-    // ─── Score weights (must sum to 100) ─────────────────────────────────────
+    //  Score weights (must sum to 100) ─
 
     uint32 public constant W_BALANCE    = 25;
     uint32 public constant W_TX_FREQ    = 20;
@@ -43,7 +28,7 @@ contract CreditScoreRegistry {
     uint32 public constant W_DEBT       = 15;  // applied to (100 - debtRatio)
     uint32 public constant MAX_SCORE    = 10_000;
 
-    // ─── Dynamic rate constants ───────────────────────────────────────────────
+    //  Dynamic rate constants 
     // To avoid FHE division, rates are stored scaled by RATE_SCALE.
     // The divisor is applied at reveal time (off-chain).
     //
@@ -61,7 +46,7 @@ contract CreditScoreRegistry {
 
     uint32 public constant MIN_CREDIT_THRESHOLD = 7_000;
 
-    // ─── State ────────────────────────────────────────────────────────────────
+    //  State ─
 
     mapping(address => CreditData) private _data;
     mapping(address => euint32)    private _scores;
@@ -78,7 +63,7 @@ contract CreditScoreRegistry {
     mapping(address => uint32)  private _revealedRates; // final rate in bps after reveal
     mapping(address => bool)    private _rateRevealed;
 
-    // ─── Events ───────────────────────────────────────────────────────────────
+    //  Events 
 
     event CreditDataSubmitted(address indexed borrower, uint256 timestamp);
     event ScoreComputed(address indexed borrower);
@@ -86,16 +71,16 @@ contract CreditScoreRegistry {
     event PersonalRateComputed(address indexed borrower);
     event PersonalRateRevealed(address indexed borrower, uint32 rateBps);
 
-    // ─── Modifiers ────────────────────────────────────────────────────────────
+    //  Modifiers 
 
     modifier requiresData(address user) {
         require(_data[user].hasData, "CreditScoreRegistry: no credit data submitted");
         _;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
     //  Borrower actions — credit data
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
 
     /**
      * @notice Submit encrypted financial signals. All values normalised to 0-100.
@@ -145,9 +130,9 @@ contract CreditScoreRegistry {
         return score;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
     //  Borrower actions — lender approval (pass/fail)
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
 
     /**
      * @notice Grant a lender an encrypted pass/fail approval.
@@ -192,9 +177,9 @@ contract CreditScoreRegistry {
         FHE.publishDecryptResult(_approvals[borrower][lender], plaintext, signature);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
     //  Borrower actions — dynamic interest rate
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
 
     /**
      * @notice Compute the caller's personalised rate entirely in FHE.
@@ -262,9 +247,9 @@ contract CreditScoreRegistry {
         emit PersonalRateRevealed(msg.sender, _revealedRates[msg.sender]);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
     //  Lender / pool reads
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
 
     function getLenderApproval(address borrower)
         external
@@ -298,9 +283,9 @@ contract CreditScoreRegistry {
         return _rateRevealed[borrower];
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
     //  Caller's own encrypted handles (for SDK decryptForTx)
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
 
     /** @notice Returns the encrypted rate handle so the borrower can initiate SDK decryption. */
     function getMyRateHandle() external view returns (euint32) {
@@ -308,9 +293,9 @@ contract CreditScoreRegistry {
         return _encRates[msg.sender];
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
     //  View helpers
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
 
     function hasData(address user) external view returns (bool) {
         return _data[user].hasData;
@@ -318,6 +303,43 @@ contract CreditScoreRegistry {
 
     function dataUpdatedAt(address user) external view returns (uint256) {
         return _data[user].updatedAt;
+    }
+
+    /** @notice Alias for dataUpdatedAt — used by external integrations for freshness checks. */
+    function lastScoreUpdate(address user) external view returns (uint256) {
+        return _data[user].updatedAt;
+    }
+
+    /**
+     * @notice One-call composability helper for external protocols.
+     *         Returns true iff the borrower's NFT tier >= minTier AND their
+     *         credit data was updated within maxAge seconds.
+     * @param borrower  Address to check.
+     * @param minTier   Minimum acceptable tier: 1=Bronze, 2=Silver, 3=Gold.
+     * @param maxAge    Maximum allowed age of credit data in seconds (0 = no freshness check).
+     */
+    function verifyCreditTier(
+        address borrower,
+        uint8   minTier,
+        uint256 maxAge
+    ) external view returns (bool) {
+        if (!_data[borrower].hasData) return false;
+        if (maxAge > 0 && block.timestamp - _data[borrower].updatedAt > maxAge) return false;
+        if (!_rateRevealed[borrower]) return false;
+
+        uint32 rate = _revealedRates[borrower];
+        // Derive tier from rate (mirrors CreditTierNFT._computeTier logic)
+        uint8 tier;
+        if (rate >= 1_500) {
+            tier = 0; // None
+        } else if (rate <= 1_033) {
+            tier = 3; // Gold
+        } else if (rate <= 1_383) {
+            tier = 2; // Silver
+        } else {
+            tier = 1; // Bronze
+        }
+        return tier >= minTier;
     }
 
     function hasApprovalFor(address borrower, address lender) external view returns (bool) {
@@ -328,9 +350,9 @@ contract CreditScoreRegistry {
         return _approvalThresholds[borrower][lender];
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
     //  Internal
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
 
     function _recomputeScore(address borrower) internal returns (euint32) {
         CreditData storage d = _data[borrower];
