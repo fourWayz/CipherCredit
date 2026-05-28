@@ -18,38 +18,54 @@ export function useLendingPool() {
 
   //  Pool stats 
 
-  const { data: liquidity,   refetch: refetchLiquidity } = useReadContract({
-    address: addr,
-    abi:     LendingPoolABI,
-    functionName: 'availableLiquidity',
-    query:   { enabled: !!addr },
+  const { data: liquidity,    refetch: refetchLiquidity } = useReadContract({
+    address: addr, abi: LendingPoolABI, functionName: 'availableLiquidity',
+    query: { enabled: !!addr },
   })
 
-  const { data: totalBorrowed  } = useReadContract({
-    address: addr,
-    abi:     LendingPoolABI,
-    functionName: 'totalBorrowed',
-    query:   { enabled: !!addr },
+  const { data: totalBorrowed } = useReadContract({
+    address: addr, abi: LendingPoolABI, functionName: 'totalBorrowed',
+    query: { enabled: !!addr },
   })
 
-  const { data: totalDeposited } = useReadContract({
-    address: addr,
-    abi:     LendingPoolABI,
-    functionName: 'totalDeposited',
-    query:   { enabled: !!addr },
+  const { data: totalLPBalance } = useReadContract({
+    address: addr, abi: LendingPoolABI, functionName: 'totalLPBalance',
+    query: { enabled: !!addr },
   })
 
-  //  Collateral ratio constants 
+  const { data: utilisationBps } = useReadContract({
+    address: addr, abi: LendingPoolABI, functionName: 'lpUtilisation',
+    query: { enabled: !!addr },
+  })
+
+  const { data: unclaimedFees } = useReadContract({
+    address: addr, abi: LendingPoolABI, functionName: 'unclaimedFees',
+    query: { enabled: !!addr },
+  })
+
+  //  Collateral ratio constants ─
 
   const { data: stdCollateral    } = useReadContract({ address: addr, abi: LendingPoolABI, functionName: 'STANDARD_RATIO', query: { enabled: !!addr } })
   const { data: creditCollateral } = useReadContract({ address: addr, abi: LendingPoolABI, functionName: 'CREDIT_RATIO',   query: { enabled: !!addr } })
 
-  //  Current user's loan ─
+  //  Provider balance (principal + accrued yield) ─
+
+  const { data: myProviderBalance, refetch: refetchProviderBalance } = useReadContract({
+    address: addr, abi: LendingPoolABI, functionName: 'providerBalance',
+    args:    address ? [address] : undefined,
+    query:   { enabled: !!address && !!addr },
+  })
+
+  const { data: myProviderShares } = useReadContract({
+    address: addr, abi: LendingPoolABI, functionName: 'providerShares',
+    args:    address ? [address] : undefined,
+    query:   { enabled: !!address && !!addr },
+  })
+
+  //  Current user's loan 
 
   const { data: activeLoanRaw, refetch: refetchLoan } = useReadContract({
-    address: addr,
-    abi:     LendingPoolABI,
-    functionName: 'loans',
+    address: addr, abi: LendingPoolABI, functionName: 'loans',
     args:    address ? [address] : undefined,
     query:   { enabled: !!address && !!addr },
   })
@@ -66,59 +82,39 @@ export function useLendingPool() {
       }
     : null
 
-  // Live accrued interest for the active loan
   const { data: accruedInterest } = useReadContract({
-    address: addr,
-    abi:     LendingPoolABI,
-    functionName: 'getAccruedInterest',
+    address: addr, abi: LendingPoolABI, functionName: 'getAccruedInterest',
     args:    address ? [address] : undefined,
     query:   { enabled: !!address && !!addr && !!activeLoan?.active, refetchInterval: 15_000 },
   })
 
-  // Total repayment due (principal + interest)
   const { data: repaymentDue } = useReadContract({
-    address: addr,
-    abi:     LendingPoolABI,
-    functionName: 'totalRepaymentDue',
+    address: addr, abi: LendingPoolABI, functionName: 'totalRepaymentDue',
     args:    address ? [address] : undefined,
     query:   { enabled: !!address && !!addr && !!activeLoan?.active, refetchInterval: 15_000 },
   })
 
-  const { data: myDeposit } = useReadContract({
-    address: addr,
-    abi:     LendingPoolABI,
-    functionName: 'providerDeposits',
-    args:    address ? [address] : undefined,
-    query:   { enabled: !!address && !!addr },
-  })
-
-  //  Wave 3: repayment history, default count, credit limit ─
+  //  Wave 3: repayment history, default count, credit limit 
 
   const { data: myRepaymentCount, refetch: refetchRepaymentCount } = useReadContract({
-    address: addr,
-    abi:     LendingPoolABI,
-    functionName: 'repaymentCount',
+    address: addr, abi: LendingPoolABI, functionName: 'repaymentCount',
     args:    address ? [address] : undefined,
     query:   { enabled: !!address && !!addr },
   })
 
   const { data: myDefaultCount } = useReadContract({
-    address: addr,
-    abi:     LendingPoolABI,
-    functionName: 'defaultCount',
+    address: addr, abi: LendingPoolABI, functionName: 'defaultCount',
     args:    address ? [address] : undefined,
     query:   { enabled: !!address && !!addr },
   })
 
   const { data: maxBorrowableRaw, refetch: refetchMaxBorrowable } = useReadContract({
-    address: addr,
-    abi:     LendingPoolABI,
-    functionName: 'maxBorrowable',
+    address: addr, abi: LendingPoolABI, functionName: 'maxBorrowable',
     args:    address ? [address] : undefined,
     query:   { enabled: !!address && !!addr },
   })
 
-  //  Gas helper ─
+  //  Gas helper 
 
   const gasFees = useCallback(async () => {
     if (!publicClient) return {}
@@ -133,28 +129,34 @@ export function useLendingPool() {
     }
   }, [publicClient])
 
-  //  Actions ─
+  //  Actions 
 
   const deposit = useCallback(async (amountEth: string) => {
     if (!addr) throw new Error('Pool not deployed on this chain')
     const hash = await writeContractAsync({
-      address: addr,
-      abi:     LendingPoolABI,
-      functionName: 'deposit',
-      value:   parseEther(amountEth),
+      address: addr, abi: LendingPoolABI, functionName: 'deposit',
+      value: parseEther(amountEth),
       ...(await gasFees()),
     })
-    await refetchLiquidity()
+    await Promise.all([refetchLiquidity(), refetchProviderBalance()])
     return hash
-  }, [addr, writeContractAsync, gasFees, refetchLiquidity])
+  }, [addr, writeContractAsync, gasFees, refetchLiquidity, refetchProviderBalance])
 
   const withdraw = useCallback(async (amountEth: string) => {
     if (!addr) throw new Error('Pool not deployed on this chain')
-    return writeContractAsync({
-      address: addr,
-      abi:     LendingPoolABI,
-      functionName: 'withdraw',
+    const hash = await writeContractAsync({
+      address: addr, abi: LendingPoolABI, functionName: 'withdraw',
       args: [parseEther(amountEth)],
+      ...(await gasFees()),
+    })
+    await Promise.all([refetchLiquidity(), refetchProviderBalance()])
+    return hash
+  }, [addr, writeContractAsync, gasFees, refetchLiquidity, refetchProviderBalance])
+
+  const claimFees = useCallback(async () => {
+    if (!addr) throw new Error('Pool not deployed on this chain')
+    return writeContractAsync({
+      address: addr, abi: LendingPoolABI, functionName: 'claimFees',
       ...(await gasFees()),
     })
   }, [addr, writeContractAsync, gasFees])
@@ -170,15 +172,10 @@ export function useLendingPool() {
       : (stdCollateral    != null ? BigInt(stdCollateral as bigint)    : 150n)
     const collateral = (principal * ratio) / 100n
 
-    // Dry-run to surface contract logic reverts before opening MetaMask.
     try {
       await publicClient!.simulateContract({
-        address: addr,
-        abi:     LendingPoolABI,
-        functionName: 'requestLoan',
-        args:    [principal, useCredit],
-        value:   collateral,
-        account: address,
+        address: addr, abi: LendingPoolABI, functionName: 'requestLoan',
+        args: [principal, useCredit], value: collateral, account: address,
       })
     } catch (e: any) {
       const msg: string = e?.message ?? String(e)
@@ -193,11 +190,8 @@ export function useLendingPool() {
     }
 
     const hash = await writeContractAsync({
-      address: addr,
-      abi:     LendingPoolABI,
-      functionName: 'requestLoan',
-      args:    [principal, useCredit],
-      value:   collateral,
+      address: addr, abi: LendingPoolABI, functionName: 'requestLoan',
+      args: [principal, useCredit], value: collateral,
       ...(await gasFees()),
     })
     if (publicClient) await publicClient.waitForTransactionReceipt({ hash })
@@ -209,45 +203,44 @@ export function useLendingPool() {
     if (!addr || repaymentDue == null) throw new Error('Pool not deployed or no active loan')
     const withBuffer = (repaymentDue * 101n) / 100n
     const hash = await writeContractAsync({
-      address: addr,
-      abi:     LendingPoolABI,
-      functionName: 'repayLoan',
-      value:   withBuffer,
+      address: addr, abi: LendingPoolABI, functionName: 'repayLoan',
+      value: withBuffer,
       ...(await gasFees()),
     })
     if (publicClient) await publicClient.waitForTransactionReceipt({ hash })
-    await Promise.all([refetchLoan(), refetchRepaymentCount(), refetchMaxBorrowable()])
+    await Promise.all([refetchLoan(), refetchRepaymentCount(), refetchMaxBorrowable(), refetchProviderBalance()])
     return hash
-  }, [addr, repaymentDue, writeContractAsync, gasFees, publicClient, refetchLoan, refetchRepaymentCount, refetchMaxBorrowable])
+  }, [addr, repaymentDue, writeContractAsync, gasFees, publicClient, refetchLoan, refetchRepaymentCount, refetchMaxBorrowable, refetchProviderBalance])
 
   const liquidate = useCallback(async (borrowerAddr: string) => {
     if (!addr) throw new Error('Pool not deployed on this chain')
-    const hash = await writeContractAsync({
-      address: addr,
-      abi:     LendingPoolABI,
-      functionName: 'liquidate',
-      args:    [borrowerAddr as `0x${string}`],
+    return writeContractAsync({
+      address: addr, abi: LendingPoolABI, functionName: 'liquidate',
+      args: [borrowerAddr as `0x${string}`],
       ...(await gasFees()),
     })
-    return hash
   }, [addr, writeContractAsync, gasFees])
 
   return {
     addr,
     liquidity,
     totalBorrowed,
-    totalDeposited,
+    totalLPBalance,
+    utilisationBps:    utilisationBps != null ? Number(utilisationBps) : 0,
+    unclaimedFees,
+    myProviderBalance,
+    myProviderShares,
     activeLoan,
     accruedInterest,
     repaymentDue,
-    myDeposit,
-    myRepaymentCount: myRepaymentCount != null ? Number(myRepaymentCount) : 0,
-    myDefaultCount:   myDefaultCount   != null ? Number(myDefaultCount)   : 0,
-    maxBorrowable:    maxBorrowableRaw as bigint | undefined,
-    standardRatio: stdCollateral    ? Number(stdCollateral)    : 150,
-    creditRatio:   creditCollateral ? Number(creditCollateral) : 110,
+    myRepaymentCount:  myRepaymentCount != null ? Number(myRepaymentCount) : 0,
+    myDefaultCount:    myDefaultCount   != null ? Number(myDefaultCount)   : 0,
+    maxBorrowable:     maxBorrowableRaw as bigint | undefined,
+    standardRatio:     stdCollateral    ? Number(stdCollateral)    : 150,
+    creditRatio:       creditCollateral ? Number(creditCollateral) : 110,
     deposit,
     withdraw,
+    claimFees,
     requestLoan,
     repayLoan,
     liquidate,
