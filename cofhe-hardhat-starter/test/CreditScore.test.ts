@@ -34,7 +34,7 @@ describe('CreditScoreRegistry', function () {
     return { registry, nft, pool, deployer, borrower, lender, borrowerClient, lenderClient }
   }
 
-  // ─── Data submission ──────────────────────────────────────────────────────
+  //  Data submission 
 
   describe('Credit data submission', function () {
     it('should accept encrypted inputs and store them', async function () {
@@ -77,7 +77,7 @@ describe('CreditScoreRegistry', function () {
     })
   })
 
-  // ─── Score computation ────────────────────────────────────────────────────
+  //  Score computation ─
 
   describe('Score computation', function () {
     it('should compute the correct encrypted score — perfect borrower', async function () {
@@ -152,7 +152,7 @@ describe('CreditScoreRegistry', function () {
     })
   })
 
-  // ─── Lender approvals ────────────────────────────────────────────────────
+  //  Lender approvals ─
 
   describe('Lender approval', function () {
     async function submitData(registry: any, borrower: any, borrowerClient: any) {
@@ -228,7 +228,7 @@ describe('CreditScoreRegistry', function () {
     })
   })
 
-  // ─── On-chain approval reveal (3-step) ───────────────────────────────────
+  //  On-chain approval reveal (3-step) ──
 
   describe('On-chain approval reveal', function () {
     it('should reveal an approved result through the 3-step flow', async function () {
