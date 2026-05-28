@@ -6,7 +6,7 @@ import "./CreditTierNFT.sol";
 
 /**
  * @title LendingPool
- * @notice Under-collateralised lending pool powered by FHE credit scores
+ * @notice Under-collateralised lending pool powered by FHE credit scores.
  */
 contract LendingPool {
     CreditScoreRegistry public immutable registry;
@@ -19,6 +19,7 @@ contract LendingPool {
     uint256 public constant LOAN_DURATION        = 30 days;  // max term before liquidation
     uint256 public constant BASE_LIMIT_BPS       = 5_000;    // 50 % of liquidity — base credit limit
     uint256 public constant LIQUIDATOR_BOUNTY    = 5;        // 5 % of collateral paid to liquidator
+    uint256 public constant PROTOCOL_FEE_BPS     = 1_000;    // 10 % of interest to feeRecipient
 
     struct Loan {
         uint256 principal;
@@ -31,17 +32,29 @@ contract LendingPool {
     }
 
     mapping(address => Loan)    public loans;
-    mapping(address => uint256) public providerDeposits;
     mapping(address => uint256) public repaymentCount;
     mapping(address => uint256) public defaultCount;
 
-    uint256 public totalDeposited;
+    //  LP share accounting 
+    // totalLPBalance tracks the collective ETH owed to LPs (deposits + net yield).
+    // It grows when interest is repaid and shrinks when providers withdraw.
+    // Share price = totalLPBalance / totalShares.
+
+    mapping(address => uint256) public providerShares;
+    uint256 public totalShares;
+    uint256 public totalLPBalance;
+
+    //  Protocol fee ─
+
+    address public immutable feeRecipient;
+    uint256 public unclaimedFees;
+
     uint256 public totalBorrowed;
 
-    // ─── Events ───────────────────────────────────────────────────────────────
+    // ─ Events ─
 
-    event Deposited(address indexed provider, uint256 amount);
-    event Withdrawn(address indexed provider, uint256 amount);
+    event Deposited(address indexed provider, uint256 amount, uint256 shares);
+    event Withdrawn(address indexed provider, uint256 amount, uint256 shares);
     event LoanIssued(
         address indexed borrower,
         uint256 principal,
@@ -62,35 +75,65 @@ contract LendingPool {
         uint256 collateral,
         uint256 deficit
     );
+    event FeesCollected(address indexed recipient, uint256 amount);
 
-    constructor(address _registry, address _nft) {
-        registry = CreditScoreRegistry(_registry);
-        nft      = CreditTierNFT(_nft);
+    constructor(address _registry, address _nft, address _feeRecipient) {
+        registry     = CreditScoreRegistry(_registry);
+        nft          = CreditTierNFT(_nft);
+        feeRecipient = _feeRecipient;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
     //  Liquidity providers
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
 
     function deposit() external payable {
         require(msg.value > 0, "LendingPool: zero deposit");
-        providerDeposits[msg.sender] += msg.value;
-        totalDeposited               += msg.value;
-        emit Deposited(msg.sender, msg.value);
+
+        uint256 shares;
+        if (totalShares == 0 || totalLPBalance == 0) {
+            shares = msg.value; // 1:1 on first deposit
+        } else {
+            shares = (msg.value * totalShares) / totalLPBalance;
+        }
+
+        providerShares[msg.sender] += shares;
+        totalShares                += shares;
+        totalLPBalance             += msg.value;
+
+        emit Deposited(msg.sender, msg.value, shares);
     }
 
     function withdraw(uint256 amount) external {
-        require(providerDeposits[msg.sender] >= amount, "LendingPool: insufficient deposit");
-        require(availableLiquidity() >= amount,         "LendingPool: insufficient liquidity");
-        providerDeposits[msg.sender] -= amount;
-        totalDeposited               -= amount;
+        require(availableLiquidity() >= amount, "LendingPool: insufficient liquidity");
+        require(totalLPBalance >= amount,        "LendingPool: amount exceeds LP pool");
+
+        uint256 sharesToBurn = (amount * totalShares) / totalLPBalance;
+        require(providerShares[msg.sender] >= sharesToBurn, "LendingPool: insufficient shares");
+
+        providerShares[msg.sender] -= sharesToBurn;
+        totalShares                -= sharesToBurn;
+        totalLPBalance             -= amount;
+
         payable(msg.sender).transfer(amount);
-        emit Withdrawn(msg.sender, amount);
+        emit Withdrawn(msg.sender, amount, sharesToBurn);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    /**
+     * @notice Collect accumulated protocol fees. Only callable by feeRecipient.
+     */
+    function claimFees() external {
+        require(msg.sender == feeRecipient, "LendingPool: not fee recipient");
+        uint256 amount = unclaimedFees;
+        require(amount > 0, "LendingPool: no fees to claim");
+        unclaimedFees = 0;
+        payable(feeRecipient).transfer(amount);
+        emit FeesCollected(feeRecipient, amount);
+    }
+
+    // ─
     //  Borrowers
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
 
     function requestLoan(uint256 principal, bool useCredit) external payable {
         require(principal > 0,             "LendingPool: zero principal");
@@ -151,6 +194,11 @@ contract LendingPool {
         uint256 collateral = loan.collateral;
         totalBorrowed -= principal;
 
+        // Distribute interest: 10 % to protocol, 90 % increases LP share value
+        uint256 fee       = (interest * PROTOCOL_FEE_BPS) / 10_000;
+        unclaimedFees    += fee;
+        totalLPBalance   += (interest - fee);
+
         repaymentCount[msg.sender]++;
         delete loans[msg.sender];
 
@@ -165,6 +213,7 @@ contract LendingPool {
     /**
      * @notice Liquidate an overdue loan. Callable by anyone once dueDate has passed.
      *         Liquidator receives 5 % of collateral as a bounty; remainder stays in pool.
+     *         Net pool gain (collateral - principal - bounty) is credited to LP balance.
      *         The borrower's defaultCount is incremented, harming future credit signals.
      */
     function liquidate(address borrower) external {
@@ -184,14 +233,43 @@ contract LendingPool {
         uint256 bounty  = (collateral * LIQUIDATOR_BOUNTY) / 100;
         uint256 deficit = totalDue > collateral ? totalDue - collateral : 0;
 
+        // Credit LPs with net gain from liquidation (collateral covers principal + bounty)
+        if (collateral >= principal + bounty) {
+            uint256 lpGain = collateral - principal - bounty;
+            // 10 % fee on the pool gain
+            uint256 fee    = (lpGain * PROTOCOL_FEE_BPS) / 10_000;
+            unclaimedFees += fee;
+            totalLPBalance += (lpGain - fee);
+        } else if (totalLPBalance > 0) {
+            // Under-collateralised edge case — pool absorbs the shortfall
+            uint256 loss = principal + bounty - collateral;
+            totalLPBalance = totalLPBalance > loss ? totalLPBalance - loss : 0;
+        }
+
         payable(msg.sender).transfer(bounty);
 
         emit LoanLiquidated(borrower, msg.sender, collateral, deficit);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
     //  Views
-    // ─────────────────────────────────────────────────────────────────────────
+    // ─
+
+    /**
+     * @notice Current ETH value of a provider's shares (principal + accrued yield).
+     */
+    function providerBalance(address provider) external view returns (uint256) {
+        if (totalShares == 0) return 0;
+        return (providerShares[provider] * totalLPBalance) / totalShares;
+    }
+
+    /**
+     * @notice Pool utilisation in basis points (totalBorrowed / totalLPBalance × 10 000).
+     */
+    function lpUtilisation() external view returns (uint256) {
+        if (totalLPBalance == 0) return 0;
+        return (totalBorrowed * 10_000) / totalLPBalance;
+    }
 
     /**
      * @notice Maximum principal a borrower may request.
