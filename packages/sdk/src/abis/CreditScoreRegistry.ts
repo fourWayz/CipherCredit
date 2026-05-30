@@ -1,5 +1,5 @@
 
-export const CreditScoreRegistryABI = [
+export const CreditScoreRegistryABI =  [
     {
       "inputs": [
         {
@@ -501,6 +501,25 @@ export const CreditScoreRegistryABI = [
       "inputs": [
         {
           "internalType": "address",
+          "name": "user",
+          "type": "address"
+        }
+      ],
+      "name": "lastScoreUpdate",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
           "name": "borrower",
           "type": "address"
         },
@@ -659,6 +678,35 @@ export const CreditScoreRegistryABI = [
       "name": "syncRateFromOracle",
       "outputs": [],
       "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "borrower",
+          "type": "address"
+        },
+        {
+          "internalType": "uint8",
+          "name": "minTier",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint256",
+          "name": "maxAge",
+          "type": "uint256"
+        }
+      ],
+      "name": "verifyCreditTier",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     }
   ] as const
