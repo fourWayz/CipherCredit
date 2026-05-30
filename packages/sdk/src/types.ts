@@ -47,7 +47,13 @@ export interface SignalResult extends SignalInputs {
 export interface PoolStats {
   liquidity:      bigint
   totalBorrowed:  bigint
-  totalDeposited: bigint
+  totalLPBalance: bigint
+  utilisationBps: number  // 0–10 000 (basis points)
+}
+
+export interface ProviderStats {
+  balance:        bigint  // current ETH value of provider's shares (principal + yield)
+  shares:         bigint  // raw share count
 }
 
 export interface ChainConfig {

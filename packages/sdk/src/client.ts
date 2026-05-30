@@ -7,7 +7,7 @@ import { fetchWalletSignals, previewScore, previewRate } from './utils/signals'
 import type {
   ChainConfig, CipherCreditClientOptions,
   BorrowerProfile, CreditTierInfo, LoanInfo,
-  PoolStats, RepaymentStats, SignalInputs, SignalResult,
+  PoolStats, ProviderStats, RepaymentStats, SignalInputs, SignalResult,
 } from './types'
 
 export class CipherCreditClient {
@@ -144,12 +144,41 @@ export class CipherCreditClient {
   //  Pool stats ─
 
   async getPoolStats(): Promise<PoolStats> {
-    const [liquidity, totalBorrowed, totalDeposited] = await Promise.all([
+    const [liquidity, totalBorrowed, totalLPBalance, utilisationBps] = await Promise.all([
       this.read('pool', LendingPoolABI, 'availableLiquidity', []),
       this.read('pool', LendingPoolABI, 'totalBorrowed',      []),
-      this.read('pool', LendingPoolABI, 'totalDeposited',     []),
+      this.read('pool', LendingPoolABI, 'totalLPBalance',     []),
+      this.read('pool', LendingPoolABI, 'lpUtilisation',      []),
     ])
-    return { liquidity, totalBorrowed, totalDeposited }
+    return { liquidity, totalBorrowed, totalLPBalance, utilisationBps: Number(utilisationBps) }
+  }
+
+  /**
+   * Current ETH balance and share count for a liquidity provider.
+   * `balance` includes accrued yield — it will exceed the original deposit once interest accrues.
+   */
+  async getProviderStats(provider: Address): Promise<ProviderStats> {
+    const [balance, shares] = await Promise.all([
+      this.read('pool', LendingPoolABI, 'providerBalance', [provider]),
+      this.read('pool', LendingPoolABI, 'providerShares' as never, [provider]),
+    ])
+    return { balance, shares }
+  }
+
+  /**
+   * One-call composability check for external protocols.
+   * Returns true iff the borrower's credit tier meets `minTier` and their data
+   * is no older than `maxAgeDays` (pass 0 for no freshness check).
+   * @param minTier  1=Bronze, 2=Silver, 3=Gold
+   */
+  verifyCreditTier(borrower: Address, minTier: 1 | 2 | 3, maxAgeDays = 0): Promise<boolean> {
+    const maxAge = maxAgeDays * 86_400
+    return this.read('registry', CreditScoreRegistryABI, 'verifyCreditTier', [borrower, minTier, maxAge])
+  }
+
+  /** Unix timestamp of the borrower's most recent credit data submission (alias for dataUpdatedAt). */
+  lastScoreUpdate(borrower: Address): Promise<bigint> {
+    return this.read('registry', CreditScoreRegistryABI, 'lastScoreUpdate', [borrower])
   }
 
   //  Signals & score preview 

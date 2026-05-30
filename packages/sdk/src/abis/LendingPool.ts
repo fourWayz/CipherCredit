@@ -10,6 +10,11 @@ export const LendingPoolABI = [
           "internalType": "address",
           "name": "_nft",
           "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_feeRecipient",
+          "type": "address"
         }
       ],
       "stateMutability": "nonpayable",
@@ -29,9 +34,34 @@ export const LendingPoolABI = [
           "internalType": "uint256",
           "name": "amount",
           "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "shares",
+          "type": "uint256"
         }
       ],
       "name": "Deposited",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "FeesCollected",
       "type": "event"
     },
     {
@@ -153,6 +183,12 @@ export const LendingPoolABI = [
           "internalType": "uint256",
           "name": "amount",
           "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "shares",
+          "type": "uint256"
         }
       ],
       "name": "Withdrawn",
@@ -238,6 +274,19 @@ export const LendingPoolABI = [
     },
     {
       "inputs": [],
+      "name": "PROTOCOL_FEE_BPS",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "STANDARD_RATIO",
       "outputs": [
         {
@@ -260,6 +309,13 @@ export const LendingPoolABI = [
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "claimFees",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -310,6 +366,19 @@ export const LendingPoolABI = [
       "name": "deposit",
       "outputs": [],
       "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "feeRecipient",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -394,6 +463,19 @@ export const LendingPoolABI = [
       "type": "function"
     },
     {
+      "inputs": [],
+      "name": "lpUtilisation",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "address",
@@ -442,11 +524,30 @@ export const LendingPoolABI = [
       "inputs": [
         {
           "internalType": "address",
+          "name": "provider",
+          "type": "address"
+        }
+      ],
+      "name": "providerBalance",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
           "name": "",
           "type": "address"
         }
       ],
-      "name": "providerDeposits",
+      "name": "providerShares",
       "outputs": [
         {
           "internalType": "uint256",
@@ -529,7 +630,7 @@ export const LendingPoolABI = [
     },
     {
       "inputs": [],
-      "name": "totalDeposited",
+      "name": "totalLPBalance",
       "outputs": [
         {
           "internalType": "uint256",
@@ -549,6 +650,32 @@ export const LendingPoolABI = [
         }
       ],
       "name": "totalRepaymentDue",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "totalShares",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "unclaimedFees",
       "outputs": [
         {
           "internalType": "uint256",
