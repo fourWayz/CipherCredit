@@ -15,7 +15,7 @@ Every DeFi lending protocol today demands 150 %+ collateral because there is no 
 
 CipherCredit computes a weighted credit score **entirely on encrypted data** using Fully Homomorphic Encryption (FHE). The score never exists in plaintext on-chain. Lenders receive a single encrypted boolean — approved or denied — and nothing else.
 
-```
+```text
 score = balance×25 + txFrequency×20 + repaymentHistory×40 + (100−debtRatio)×15
                                                               max = 10 000
 ```
@@ -24,7 +24,7 @@ score = balance×25 + txFrequency×20 + repaymentHistory×40 + (100−debtRatio)
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                        Borrower                         │
 │  1. Encrypts 4 signals client-side (CoFHE SDK)          │
@@ -45,7 +45,7 @@ score = balance×25 + txFrequency×20 + repaymentHistory×40 + (100−debtRatio)
 ### Smart Contracts
 
 | Contract | Description |
-|---|---|
+| --- | --- |
 | `CreditScoreRegistry.sol` | Stores encrypted signals, computes FHE weighted score, manages lender approvals and personal rate |
 | `LendingPool.sol` | Under-collateralised lending pool; reads on-chain-revealed approval and rate |
 | `CreditTierNFT.sol` | Soul-bound ERC-721 encoding Bronze / Silver / Gold tier from revealed rate; on-chain SVG |
@@ -65,7 +65,7 @@ ebool approved = FHE.gte(score, FHE.asEuint32(threshold));
 
 ### On-chain approval reveal (3-step flow)
 
-```
+```text
 1. borrower → registry.grantLenderApproval(pool, 7000)  // FHE comparison
 2. borrower → registry.allowApprovalPublic(pool)         // permit decryption
 3. keeper   → registry.publishApprovalResult(...)        // threshold-network sig
@@ -76,7 +76,7 @@ ebool approved = FHE.gte(score, FHE.asEuint32(threshold));
 
 ## Monorepo Structure
 
-```
+```text
 fhenix/
 ├── cofhe-hardhat-starter/          # Contracts, tasks, tests
 │   ├── contracts/
@@ -89,25 +89,31 @@ fhenix/
 │   │   └── request-approval.ts
 │   └── test/
 │       └── CreditScore.test.ts
-└── frontend/                       # Next.js 15 App Router UI
-    └── src/
-        ├── app/
-        │   ├── layout.tsx
-        │   ├── page.tsx            # Home
-        │   ├── borrower/page.tsx   # Borrower dashboard
-        │   └── lender/page.tsx     # Lender dashboard
-        ├── components/
-        │   ├── Providers.tsx       # wagmi + react-query
-        │   ├── Header.tsx
-        │   └── ConnectWallet.tsx
-        ├── hooks/
-        │   ├── useCofhe.ts         # CoFHE SDK client lifecycle
-        │   ├── useCreditScore.ts   # Encrypt, submit, rate reveal
-        │   ├── useLendingPool.ts   # Deposit, borrow, repay
-        │   ├── useCreditNFT.ts     # Tier NFT mint and reads
-        │   └── useAutoSignals.ts   # On-chain signal fetching
-        ├── abis/                   # Typed contract ABIs
-        └── config.ts               # Chain + contract addresses
+├── frontend/                       # Next.js 15 App Router UI
+│   └── src/
+│       ├── app/
+│       │   ├── layout.tsx
+│       │   ├── page.tsx            # Home
+│       │   ├── borrower/page.tsx   # Borrower dashboard
+│       │   └── lender/page.tsx     # Lender dashboard
+│       ├── components/
+│       ├── hooks/
+│       │   ├── useCofhe.ts         # CoFHE SDK client lifecycle
+│       │   ├── useCreditScore.ts   # Encrypt, submit, rate reveal
+│       │   ├── useLendingPool.ts   # Deposit, borrow, repay
+│       │   ├── useCreditNFT.ts     # Tier NFT mint and reads
+│       │   └── useAutoSignals.ts   # On-chain signal fetching
+│       ├── abis/                   # Typed contract ABIs
+│       └── config.ts               # Chain + contract addresses
+└── packages/
+    └── sdk/                        # @ciphercredit/sdk — developer SDK
+        └── src/
+            ├── client.ts           # CipherCreditClient
+            ├── types.ts
+            ├── constants.ts
+            ├── abis/
+            ├── utils/
+            └── react/              # wagmi hooks sub-export
 ```
 
 ---
@@ -147,7 +153,13 @@ npm run dev
 # → http://localhost:3000
 ```
 
-### 3. Environment variables
+### 3. Developer SDK
+
+```bash
+npm install @ciphercredit/sdk
+```
+
+### 4. Environment variables
 
 ```bash
 # cofhe-hardhat-starter/.env
@@ -167,17 +179,17 @@ After deploying, update [frontend/src/config.ts](frontend/src/config.ts) with th
 ### Arbitrum Sepolia
 
 | Contract | Address |
-|---|---|
-| `CreditScoreRegistry` | [`0x6C0E2b4C44ed9F3ED057a2fdF1dE4c53Ec997567`](https://sepolia.arbiscan.io/address/0x6C0E2b4C44ed9F3ED057a2fdF1dE4c53Ec997567) |
-| `LendingPool` | [`0xa646663c7D269363c62198EFb1d69Fc1d24e298B`](https://sepolia.arbiscan.io/address/0xa646663c7D269363c62198EFb1d69Fc1d24e298B) |
-| `CreditTierNFT` | [`0x7b5353c1c76f0fBdF40000DF272Ee81A3e9b7C9F`](https://sepolia.arbiscan.io/address/0x7b5353c1c76f0fBdF40000DF272Ee81A3e9b7C9F) |
+| --- | --- |
+| `CreditScoreRegistry` | [`0xb05dB39DF30485aF300874A7fF3BEfDA72F15Ab0`](https://sepolia.arbiscan.io/address/0xb05dB39DF30485aF300874A7fF3BEfDA72F15Ab0) |
+| `LendingPool` | [`0x76b09CC00c892c76C18948e9f2ca1Aa43C93321e`](https://sepolia.arbiscan.io/address/0x76b09CC00c892c76C18948e9f2ca1Aa43C93321e) |
+| `CreditTierNFT` | [`0x2522743838D43e6EB9532f1EEE452B85F4aAF89E`](https://sepolia.arbiscan.io/address/0x2522743838D43e6EB9532f1EEE452B85F4aAF89E) |
 
 ---
 
 ## Supported Networks
 
 | Network | Chain ID | CoFHE Support |
-|---|---|---|
+| --- | --- | --- |
 | Arbitrum Sepolia | 421614 | Testnet |
 | Base Sepolia | 84532 | Testnet |
 | Local CoFHE | 31337 | Mock (tests only) |
@@ -187,7 +199,7 @@ After deploying, update [frontend/src/config.ts](frontend/src/config.ts) with th
 ## Collateral Tiers
 
 | Borrower type | Collateral required | Condition |
-|---|---|---|
+| --- | --- | --- |
 | Standard | **150 %** | No credit check |
 | Credit-approved | **110 %** | FHE score ≥ 7 000 / 10 000 |
 
@@ -198,10 +210,11 @@ The pool **never learns** the numeric score — only the threshold-network-verif
 ## Tech Stack
 
 | Layer | Technology |
-|---|---|
+| --- | --- |
 | FHE | [Fhenix CoFHE](https://docs.fhenix.io) — `@cofhe/sdk`, `@cofhe/hardhat-plugin` |
 | Contracts | Solidity 0.8.28, Hardhat, TypeChain |
 | Frontend | Next.js 15 (App Router), wagmi v2, viem, TailwindCSS |
+| SDK | TypeScript, viem, optional wagmi/React hooks |
 | Testing | Hardhat + CoFHE mock network |
 
 ---
@@ -213,6 +226,7 @@ Traditional credit scoring on-chain requires revealing financial history — def
 1. **Compute creditworthiness without seeing the data** — FHE arithmetic on encrypted inputs
 2. **Issue selective disclosure** — lenders receive a typed `ebool`, not a score
 3. **Enforce credit tiers on-chain** — the lending pool verifies the threshold-network signature
+4. **Scale credit limits by tier** — Gold holders get 2× borrowing capacity, proven privately
 
 This unlocks under-collateralised DeFi lending at scale without any trusted intermediary or data exposure.
 

@@ -9,9 +9,9 @@ export const CHAIN_CONFIGS: Record<number, ChainConfig> = {
   [ARB_SEPOLIA_CHAIN_ID]: {
     chainId:  ARB_SEPOLIA_CHAIN_ID,
     name:     'Arbitrum Sepolia',
-    registry: '0x5251f7e0890d02001cFeD2191924922D285579F1',
-    pool:     '0xD49e2362B08a65C5B8eB77bEdD153E60D8Bceda8',
-    nft:      '0x02ABEC33b433f8370b24b55f4caA6412E3D4E0B3',
+    registry: '0xb05dB39DF30485aF300874A7fF3BEfDA72F15Ab0',
+    pool:     '0x76b09CC00c892c76C18948e9f2ca1Aa43C93321e',
+    nft:      '0x2522743838D43e6EB9532f1EEE452B85F4aAF89E',
   },
 }
 
