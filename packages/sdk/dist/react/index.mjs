@@ -10,7 +10,7 @@ import {
   formatTimeLeft,
   previewRate,
   previewScore
-} from "../chunk-GZOWZNWZ.mjs";
+} from "../chunk-BNMOB4CC.mjs";
 
 // src/react/index.ts
 import { useMemo, useEffect, useState } from "react";

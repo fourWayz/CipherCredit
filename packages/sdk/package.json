@@ -1,6 +1,6 @@
 {
   "name": "@ciphercredit/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Privacy-preserving DeFi credit scoring SDK powered by Fhenix CoFHE — verify credit tiers, check approvals, and read loan state without touching encrypted data.",
   "author": "CipherCredit",
   "license": "MIT",
@@ -9,13 +9,13 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types":   "./dist/index.d.ts",
-      "import":  "./dist/index.mjs",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
     "./react": {
-      "types":   "./dist/react/index.d.ts",
-      "import":  "./dist/react/index.mjs",
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.mjs",
       "require": "./dist/react/index.js"
     }
   },

@@ -549,6 +549,25 @@ var CreditScoreRegistryABI = [
     "inputs": [
       {
         "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "lastScoreUpdate",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
         "name": "borrower",
         "type": "address"
       },
@@ -708,6 +727,35 @@ var CreditScoreRegistryABI = [
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "borrower",
+        "type": "address"
+      },
+      {
+        "internalType": "uint8",
+        "name": "minTier",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "maxAge",
+        "type": "uint256"
+      }
+    ],
+    "name": "verifyCreditTier",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
   }
 ];
 
@@ -723,6 +771,11 @@ var LendingPoolABI = [
       {
         "internalType": "address",
         "name": "_nft",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_feeRecipient",
         "type": "address"
       }
     ],
@@ -743,9 +796,34 @@ var LendingPoolABI = [
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "shares",
+        "type": "uint256"
       }
     ],
     "name": "Deposited",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "FeesCollected",
     "type": "event"
   },
   {
@@ -867,6 +945,12 @@ var LendingPoolABI = [
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "shares",
+        "type": "uint256"
       }
     ],
     "name": "Withdrawn",
@@ -952,6 +1036,19 @@ var LendingPoolABI = [
   },
   {
     "inputs": [],
+    "name": "PROTOCOL_FEE_BPS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "STANDARD_RATIO",
     "outputs": [
       {
@@ -974,6 +1071,13 @@ var LendingPoolABI = [
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "claimFees",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -1024,6 +1128,19 @@ var LendingPoolABI = [
     "name": "deposit",
     "outputs": [],
     "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "feeRecipient",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -1108,6 +1225,19 @@ var LendingPoolABI = [
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "lpUtilisation",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -1156,11 +1286,30 @@ var LendingPoolABI = [
     "inputs": [
       {
         "internalType": "address",
+        "name": "provider",
+        "type": "address"
+      }
+    ],
+    "name": "providerBalance",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
         "name": "",
         "type": "address"
       }
     ],
-    "name": "providerDeposits",
+    "name": "providerShares",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1243,7 +1392,7 @@ var LendingPoolABI = [
   },
   {
     "inputs": [],
-    "name": "totalDeposited",
+    "name": "totalLPBalance",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1263,6 +1412,32 @@ var LendingPoolABI = [
       }
     ],
     "name": "totalRepaymentDue",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "totalShares",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "unclaimedFees",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1295,449 +1470,38 @@ var LendingPoolABI = [
 // src/abis/CreditTierNFT.ts
 var CreditTierNFTABI = [
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_registry",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "holder",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "enum CreditTierNFT.Tier",
-        "name": "tier",
-        "type": "uint8"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "tokenId",
-        "type": "uint256"
-      }
-    ],
-    "name": "TierMinted",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "holder",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "enum CreditTierNFT.Tier",
-        "name": "oldTier",
-        "type": "uint8"
-      },
-      {
-        "indexed": false,
-        "internalType": "enum CreditTierNFT.Tier",
-        "name": "newTier",
-        "type": "uint8"
-      }
-    ],
-    "name": "TierUpdated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "from",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "to",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "tokenId",
-        "type": "uint256"
-      }
-    ],
-    "name": "Transfer",
-    "type": "event"
-  },
-  {
-    "inputs": [],
-    "name": "BASE_RATE_BPS",
-    "outputs": [
-      {
-        "internalType": "uint32",
-        "name": "",
-        "type": "uint32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "GOLD_RATE_CEIL",
-    "outputs": [
-      {
-        "internalType": "uint32",
-        "name": "",
-        "type": "uint32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "SILVER_RATE_CEIL",
-    "outputs": [
-      {
-        "internalType": "uint32",
-        "name": "",
-        "type": "uint32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "approve",
-    "outputs": [],
-    "stateMutability": "pure",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "holder",
-        "type": "address"
-      }
-    ],
-    "name": "balanceOf",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "holder",
-        "type": "address"
-      }
-    ],
+    "inputs": [{ "internalType": "address", "name": "holder", "type": "address" }],
     "name": "getTier",
-    "outputs": [
-      {
-        "internalType": "enum CreditTierNFT.Tier",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
+    "outputs": [{ "internalType": "uint8", "name": "", "type": "uint8" }],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "holder",
-        "type": "address"
-      }
-    ],
+    "inputs": [{ "internalType": "address", "name": "holder", "type": "address" }],
     "name": "getTierName",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
+    "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
+    "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
     "name": "hasMinted",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "mintOrUpdateTier",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "name",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "tokenId",
-        "type": "uint256"
-      }
-    ],
-    "name": "ownerOf",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "registry",
-    "outputs": [
-      {
-        "internalType": "contract CreditScoreRegistry",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "safeTransferFrom",
-    "outputs": [],
-    "stateMutability": "pure",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bytes",
-        "name": "",
-        "type": "bytes"
-      }
-    ],
-    "name": "safeTransferFrom",
-    "outputs": [],
-    "stateMutability": "pure",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      },
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "name": "setApprovalForAll",
-    "outputs": [],
-    "stateMutability": "pure",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes4",
-        "name": "interfaceId",
-        "type": "bytes4"
-      }
-    ],
-    "name": "supportsInterface",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "pure",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "symbol",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "tiers",
-    "outputs": [
-      {
-        "internalType": "enum CreditTierNFT.Tier",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "tokenId",
-        "type": "uint256"
-      }
-    ],
-    "name": "tokenURI",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
+    "inputs": [{ "internalType": "address", "name": "holder", "type": "address" }],
+    "name": "balanceOf",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
     "name": "totalMinted",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "transferFrom",
-    "outputs": [],
-    "stateMutability": "pure",
     "type": "function"
   }
 ];
@@ -1749,9 +1513,9 @@ var CHAIN_CONFIGS = {
   [ARB_SEPOLIA_CHAIN_ID]: {
     chainId: ARB_SEPOLIA_CHAIN_ID,
     name: "Arbitrum Sepolia",
-    registry: "0x5251f7e0890d02001cFeD2191924922D285579F1",
-    pool: "0xD49e2362B08a65C5B8eB77bEdD153E60D8Bceda8",
-    nft: "0x02ABEC33b433f8370b24b55f4caA6412E3D4E0B3"
+    registry: "0xb05dB39DF30485aF300874A7fF3BEfDA72F15Ab0",
+    pool: "0x76b09CC00c892c76C18948e9f2ca1Aa43C93321e",
+    nft: "0x2522743838D43e6EB9532f1EEE452B85F4aAF89E"
   }
 };
 var CREDIT_TIERS = {
@@ -1852,7 +1616,7 @@ var CipherCreditClient = class {
     }
     this.config = cfg;
   }
-  //  Credit verification 
+  // ── Credit verification ────────────────────────────────────────────────────
   /** True if `borrower` has submitted credit data to the registry. */
   hasData(borrower) {
     return this.read("registry", CreditScoreRegistryABI, "hasData", [borrower]);
@@ -1878,7 +1642,7 @@ var CipherCreditClient = class {
     if (!revealed) return null;
     return Number(await this.read("registry", CreditScoreRegistryABI, "getRevealedRate", [borrower]));
   }
-  //  Credit tier 
+  // ── Credit tier ────────────────────────────────────────────────────────────
   /** Returns the full tier info for the borrower's soul-bound CreditTierNFT. */
   async getTier(borrower) {
     const idx = Number(
@@ -1900,7 +1664,7 @@ var CipherCreditClient = class {
     const tier = await this.getTier(borrower);
     return TIER_ORDER[tier.name] >= TIER_ORDER[minTier];
   }
-  //  Loan state ─
+  // ── Loan state ─────────────────────────────────────────────────────────────
   /**
    * Returns the active loan for `borrower`, or `null` if none exists.
    * Includes `isOverdue` — true once `dueDate` has passed.
@@ -1934,7 +1698,7 @@ var CipherCreditClient = class {
   totalRepaymentDue(borrower) {
     return this.read("pool", LendingPoolABI, "totalRepaymentDue", [borrower]);
   }
-  //  Repayment history 
+  // ── Repayment history ──────────────────────────────────────────────────────
   /**
    * On-chain repayment and default counters for `borrower`.
    * `healthScore` (0–100) is derived from the ratio of repayments to defaults.
@@ -1948,16 +1712,42 @@ var CipherCreditClient = class {
     const dc = Number(defaultCount);
     return { repaymentCount: rc, defaultCount: dc, healthScore: healthScore(rc, dc) };
   }
-  //  Pool stats ─
+  // ── Pool stats ─────────────────────────────────────────────────────────────
   async getPoolStats() {
-    const [liquidity, totalBorrowed, totalDeposited] = await Promise.all([
+    const [liquidity, totalBorrowed, totalLPBalance, utilisationBps] = await Promise.all([
       this.read("pool", LendingPoolABI, "availableLiquidity", []),
       this.read("pool", LendingPoolABI, "totalBorrowed", []),
-      this.read("pool", LendingPoolABI, "totalDeposited", [])
+      this.read("pool", LendingPoolABI, "totalLPBalance", []),
+      this.read("pool", LendingPoolABI, "lpUtilisation", [])
     ]);
-    return { liquidity, totalBorrowed, totalDeposited };
+    return { liquidity, totalBorrowed, totalLPBalance, utilisationBps: Number(utilisationBps) };
   }
-  //  Signals & score preview 
+  /**
+   * Current ETH balance and share count for a liquidity provider.
+   * `balance` includes accrued yield — it will exceed the original deposit once interest accrues.
+   */
+  async getProviderStats(provider) {
+    const [balance, shares] = await Promise.all([
+      this.read("pool", LendingPoolABI, "providerBalance", [provider]),
+      this.read("pool", LendingPoolABI, "providerShares", [provider])
+    ]);
+    return { balance, shares };
+  }
+  /**
+   * One-call composability check for external protocols.
+   * Returns true iff the borrower's credit tier meets `minTier` and their data
+   * is no older than `maxAgeDays` (pass 0 for no freshness check).
+   * @param minTier  1=Bronze, 2=Silver, 3=Gold
+   */
+  verifyCreditTier(borrower, minTier, maxAgeDays = 0) {
+    const maxAge = maxAgeDays * 86400;
+    return this.read("registry", CreditScoreRegistryABI, "verifyCreditTier", [borrower, minTier, maxAge]);
+  }
+  /** Unix timestamp of the borrower's most recent credit data submission (alias for dataUpdatedAt). */
+  lastScoreUpdate(borrower) {
+    return this.read("registry", CreditScoreRegistryABI, "lastScoreUpdate", [borrower]);
+  }
+  // ── Signals & score preview ────────────────────────────────────────────────
   /**
    * Fetch normalised credit signals from the chain for `borrower`.
    * Returns raw wallet metrics alongside the FHE score preview and estimated rate.
@@ -1974,7 +1764,7 @@ var CipherCreditClient = class {
   previewRate(inputs) {
     return previewRate(inputs);
   }
-  //  Full borrower profile 
+  // ── Full borrower profile ──────────────────────────────────────────────────
   /**
    * Single call that aggregates all on-chain data for a borrower.
    * Pass `pool` to also check approval status for that pool.
@@ -2002,7 +1792,7 @@ var CipherCreditClient = class {
     }
     return profile;
   }
-  //  Private helpers 
+  // ── Private helpers ────────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   read(contract, abi, functionName, args) {
     return this.pub.readContract({

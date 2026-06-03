@@ -1,4 +1,4 @@
-export { A as ARB_SEPOLIA_CHAIN_ID, B as BASE_RATE_BPS, a as BASE_SEPOLIA_CHAIN_ID, b as BorrowerProfile, C as CHAIN_CONFIGS, c as CREDIT_TIERS, d as ChainConfig, e as CipherCreditClient, f as CipherCreditClientOptions, g as CreditTierInfo, L as LoanInfo, M as MAX_SCORE, h as MIN_CREDIT_THRESHOLD, i as MIN_RATE_BPS, P as PoolStats, R as RepaymentStats, S as SignalInputs, j as SignalResult, T as TierIndex, W as W_BALANCE, k as W_DEBT, l as W_REPAYMENT, m as W_TX_FREQ, n as bpsToApr, o as fetchWalletSignals, p as formatBps, q as formatEthShort, r as formatTierMultiplier, t as previewRate, u as previewScore } from './format-CypMcYm_.js';
+export { A as ARB_SEPOLIA_CHAIN_ID, B as BASE_RATE_BPS, a as BASE_SEPOLIA_CHAIN_ID, b as BorrowerProfile, C as CHAIN_CONFIGS, c as CREDIT_TIERS, d as ChainConfig, e as CipherCreditClient, f as CipherCreditClientOptions, g as CreditTierInfo, L as LoanInfo, M as MAX_SCORE, h as MIN_CREDIT_THRESHOLD, i as MIN_RATE_BPS, P as PoolStats, R as RepaymentStats, S as SignalInputs, j as SignalResult, T as TierIndex, W as W_BALANCE, k as W_DEBT, l as W_REPAYMENT, m as W_TX_FREQ, n as bpsToApr, o as fetchWalletSignals, p as formatBps, q as formatEthShort, r as formatTierMultiplier, t as previewRate, u as previewScore } from './format-BnAAUSW9.js';
 import 'viem';
 
 declare const CreditScoreRegistryABI: readonly [{
@@ -384,6 +384,20 @@ declare const CreditScoreRegistryABI: readonly [{
 }, {
     readonly inputs: readonly [{
         readonly internalType: "address";
+        readonly name: "user";
+        readonly type: "address";
+    }];
+    readonly name: "lastScoreUpdate";
+    readonly outputs: readonly [{
+        readonly internalType: "uint256";
+        readonly name: "";
+        readonly type: "uint256";
+    }];
+    readonly stateMutability: "view";
+    readonly type: "function";
+}, {
+    readonly inputs: readonly [{
+        readonly internalType: "address";
         readonly name: "borrower";
         readonly type: "address";
     }, {
@@ -509,6 +523,28 @@ declare const CreditScoreRegistryABI: readonly [{
     readonly outputs: readonly [];
     readonly stateMutability: "nonpayable";
     readonly type: "function";
+}, {
+    readonly inputs: readonly [{
+        readonly internalType: "address";
+        readonly name: "borrower";
+        readonly type: "address";
+    }, {
+        readonly internalType: "uint8";
+        readonly name: "minTier";
+        readonly type: "uint8";
+    }, {
+        readonly internalType: "uint256";
+        readonly name: "maxAge";
+        readonly type: "uint256";
+    }];
+    readonly name: "verifyCreditTier";
+    readonly outputs: readonly [{
+        readonly internalType: "bool";
+        readonly name: "";
+        readonly type: "bool";
+    }];
+    readonly stateMutability: "view";
+    readonly type: "function";
 }];
 
 declare const LendingPoolABI: readonly [{
@@ -519,6 +555,10 @@ declare const LendingPoolABI: readonly [{
     }, {
         readonly internalType: "address";
         readonly name: "_nft";
+        readonly type: "address";
+    }, {
+        readonly internalType: "address";
+        readonly name: "_feeRecipient";
         readonly type: "address";
     }];
     readonly stateMutability: "nonpayable";
@@ -535,8 +575,28 @@ declare const LendingPoolABI: readonly [{
         readonly internalType: "uint256";
         readonly name: "amount";
         readonly type: "uint256";
+    }, {
+        readonly indexed: false;
+        readonly internalType: "uint256";
+        readonly name: "shares";
+        readonly type: "uint256";
     }];
     readonly name: "Deposited";
+    readonly type: "event";
+}, {
+    readonly anonymous: false;
+    readonly inputs: readonly [{
+        readonly indexed: true;
+        readonly internalType: "address";
+        readonly name: "recipient";
+        readonly type: "address";
+    }, {
+        readonly indexed: false;
+        readonly internalType: "uint256";
+        readonly name: "amount";
+        readonly type: "uint256";
+    }];
+    readonly name: "FeesCollected";
     readonly type: "event";
 }, {
     readonly anonymous: false;
@@ -635,6 +695,11 @@ declare const LendingPoolABI: readonly [{
         readonly internalType: "uint256";
         readonly name: "amount";
         readonly type: "uint256";
+    }, {
+        readonly indexed: false;
+        readonly internalType: "uint256";
+        readonly name: "shares";
+        readonly type: "uint256";
     }];
     readonly name: "Withdrawn";
     readonly type: "event";
@@ -700,6 +765,16 @@ declare const LendingPoolABI: readonly [{
     readonly type: "function";
 }, {
     readonly inputs: readonly [];
+    readonly name: "PROTOCOL_FEE_BPS";
+    readonly outputs: readonly [{
+        readonly internalType: "uint256";
+        readonly name: "";
+        readonly type: "uint256";
+    }];
+    readonly stateMutability: "view";
+    readonly type: "function";
+}, {
+    readonly inputs: readonly [];
     readonly name: "STANDARD_RATIO";
     readonly outputs: readonly [{
         readonly internalType: "uint256";
@@ -717,6 +792,12 @@ declare const LendingPoolABI: readonly [{
         readonly type: "uint256";
     }];
     readonly stateMutability: "view";
+    readonly type: "function";
+}, {
+    readonly inputs: readonly [];
+    readonly name: "claimFees";
+    readonly outputs: readonly [];
+    readonly stateMutability: "nonpayable";
     readonly type: "function";
 }, {
     readonly inputs: readonly [{
@@ -755,6 +836,16 @@ declare const LendingPoolABI: readonly [{
     readonly name: "deposit";
     readonly outputs: readonly [];
     readonly stateMutability: "payable";
+    readonly type: "function";
+}, {
+    readonly inputs: readonly [];
+    readonly name: "feeRecipient";
+    readonly outputs: readonly [{
+        readonly internalType: "address";
+        readonly name: "";
+        readonly type: "address";
+    }];
+    readonly stateMutability: "view";
     readonly type: "function";
 }, {
     readonly inputs: readonly [{
@@ -819,6 +910,16 @@ declare const LendingPoolABI: readonly [{
     readonly stateMutability: "view";
     readonly type: "function";
 }, {
+    readonly inputs: readonly [];
+    readonly name: "lpUtilisation";
+    readonly outputs: readonly [{
+        readonly internalType: "uint256";
+        readonly name: "";
+        readonly type: "uint256";
+    }];
+    readonly stateMutability: "view";
+    readonly type: "function";
+}, {
     readonly inputs: readonly [{
         readonly internalType: "address";
         readonly name: "borrower";
@@ -855,10 +956,24 @@ declare const LendingPoolABI: readonly [{
 }, {
     readonly inputs: readonly [{
         readonly internalType: "address";
+        readonly name: "provider";
+        readonly type: "address";
+    }];
+    readonly name: "providerBalance";
+    readonly outputs: readonly [{
+        readonly internalType: "uint256";
+        readonly name: "";
+        readonly type: "uint256";
+    }];
+    readonly stateMutability: "view";
+    readonly type: "function";
+}, {
+    readonly inputs: readonly [{
+        readonly internalType: "address";
         readonly name: "";
         readonly type: "address";
     }];
-    readonly name: "providerDeposits";
+    readonly name: "providerShares";
     readonly outputs: readonly [{
         readonly internalType: "uint256";
         readonly name: "";
@@ -922,7 +1037,7 @@ declare const LendingPoolABI: readonly [{
     readonly type: "function";
 }, {
     readonly inputs: readonly [];
-    readonly name: "totalDeposited";
+    readonly name: "totalLPBalance";
     readonly outputs: readonly [{
         readonly internalType: "uint256";
         readonly name: "";
@@ -937,6 +1052,26 @@ declare const LendingPoolABI: readonly [{
         readonly type: "address";
     }];
     readonly name: "totalRepaymentDue";
+    readonly outputs: readonly [{
+        readonly internalType: "uint256";
+        readonly name: "";
+        readonly type: "uint256";
+    }];
+    readonly stateMutability: "view";
+    readonly type: "function";
+}, {
+    readonly inputs: readonly [];
+    readonly name: "totalShares";
+    readonly outputs: readonly [{
+        readonly internalType: "uint256";
+        readonly name: "";
+        readonly type: "uint256";
+    }];
+    readonly stateMutability: "view";
+    readonly type: "function";
+}, {
+    readonly inputs: readonly [];
+    readonly name: "unclaimedFees";
     readonly outputs: readonly [{
         readonly internalType: "uint256";
         readonly name: "";
@@ -962,138 +1097,12 @@ declare const LendingPoolABI: readonly [{
 declare const CreditTierNFTABI: readonly [{
     readonly inputs: readonly [{
         readonly internalType: "address";
-        readonly name: "_registry";
-        readonly type: "address";
-    }];
-    readonly stateMutability: "nonpayable";
-    readonly type: "constructor";
-}, {
-    readonly anonymous: false;
-    readonly inputs: readonly [{
-        readonly indexed: true;
-        readonly internalType: "address";
-        readonly name: "holder";
-        readonly type: "address";
-    }, {
-        readonly indexed: false;
-        readonly internalType: "enum CreditTierNFT.Tier";
-        readonly name: "tier";
-        readonly type: "uint8";
-    }, {
-        readonly indexed: false;
-        readonly internalType: "uint256";
-        readonly name: "tokenId";
-        readonly type: "uint256";
-    }];
-    readonly name: "TierMinted";
-    readonly type: "event";
-}, {
-    readonly anonymous: false;
-    readonly inputs: readonly [{
-        readonly indexed: true;
-        readonly internalType: "address";
-        readonly name: "holder";
-        readonly type: "address";
-    }, {
-        readonly indexed: false;
-        readonly internalType: "enum CreditTierNFT.Tier";
-        readonly name: "oldTier";
-        readonly type: "uint8";
-    }, {
-        readonly indexed: false;
-        readonly internalType: "enum CreditTierNFT.Tier";
-        readonly name: "newTier";
-        readonly type: "uint8";
-    }];
-    readonly name: "TierUpdated";
-    readonly type: "event";
-}, {
-    readonly anonymous: false;
-    readonly inputs: readonly [{
-        readonly indexed: true;
-        readonly internalType: "address";
-        readonly name: "from";
-        readonly type: "address";
-    }, {
-        readonly indexed: true;
-        readonly internalType: "address";
-        readonly name: "to";
-        readonly type: "address";
-    }, {
-        readonly indexed: true;
-        readonly internalType: "uint256";
-        readonly name: "tokenId";
-        readonly type: "uint256";
-    }];
-    readonly name: "Transfer";
-    readonly type: "event";
-}, {
-    readonly inputs: readonly [];
-    readonly name: "BASE_RATE_BPS";
-    readonly outputs: readonly [{
-        readonly internalType: "uint32";
-        readonly name: "";
-        readonly type: "uint32";
-    }];
-    readonly stateMutability: "view";
-    readonly type: "function";
-}, {
-    readonly inputs: readonly [];
-    readonly name: "GOLD_RATE_CEIL";
-    readonly outputs: readonly [{
-        readonly internalType: "uint32";
-        readonly name: "";
-        readonly type: "uint32";
-    }];
-    readonly stateMutability: "view";
-    readonly type: "function";
-}, {
-    readonly inputs: readonly [];
-    readonly name: "SILVER_RATE_CEIL";
-    readonly outputs: readonly [{
-        readonly internalType: "uint32";
-        readonly name: "";
-        readonly type: "uint32";
-    }];
-    readonly stateMutability: "view";
-    readonly type: "function";
-}, {
-    readonly inputs: readonly [{
-        readonly internalType: "address";
-        readonly name: "";
-        readonly type: "address";
-    }, {
-        readonly internalType: "uint256";
-        readonly name: "";
-        readonly type: "uint256";
-    }];
-    readonly name: "approve";
-    readonly outputs: readonly [];
-    readonly stateMutability: "pure";
-    readonly type: "function";
-}, {
-    readonly inputs: readonly [{
-        readonly internalType: "address";
-        readonly name: "holder";
-        readonly type: "address";
-    }];
-    readonly name: "balanceOf";
-    readonly outputs: readonly [{
-        readonly internalType: "uint256";
-        readonly name: "";
-        readonly type: "uint256";
-    }];
-    readonly stateMutability: "view";
-    readonly type: "function";
-}, {
-    readonly inputs: readonly [{
-        readonly internalType: "address";
         readonly name: "holder";
         readonly type: "address";
     }];
     readonly name: "getTier";
     readonly outputs: readonly [{
-        readonly internalType: "enum CreditTierNFT.Tier";
+        readonly internalType: "uint8";
         readonly name: "";
         readonly type: "uint8";
     }];
@@ -1128,148 +1137,16 @@ declare const CreditTierNFTABI: readonly [{
     readonly stateMutability: "view";
     readonly type: "function";
 }, {
-    readonly inputs: readonly [];
-    readonly name: "mintOrUpdateTier";
-    readonly outputs: readonly [];
-    readonly stateMutability: "nonpayable";
-    readonly type: "function";
-}, {
-    readonly inputs: readonly [];
-    readonly name: "name";
-    readonly outputs: readonly [{
-        readonly internalType: "string";
-        readonly name: "";
-        readonly type: "string";
-    }];
-    readonly stateMutability: "view";
-    readonly type: "function";
-}, {
-    readonly inputs: readonly [{
-        readonly internalType: "uint256";
-        readonly name: "tokenId";
-        readonly type: "uint256";
-    }];
-    readonly name: "ownerOf";
-    readonly outputs: readonly [{
-        readonly internalType: "address";
-        readonly name: "";
-        readonly type: "address";
-    }];
-    readonly stateMutability: "view";
-    readonly type: "function";
-}, {
-    readonly inputs: readonly [];
-    readonly name: "registry";
-    readonly outputs: readonly [{
-        readonly internalType: "contract CreditScoreRegistry";
-        readonly name: "";
-        readonly type: "address";
-    }];
-    readonly stateMutability: "view";
-    readonly type: "function";
-}, {
     readonly inputs: readonly [{
         readonly internalType: "address";
-        readonly name: "";
+        readonly name: "holder";
         readonly type: "address";
-    }, {
-        readonly internalType: "address";
-        readonly name: "";
-        readonly type: "address";
-    }, {
+    }];
+    readonly name: "balanceOf";
+    readonly outputs: readonly [{
         readonly internalType: "uint256";
         readonly name: "";
         readonly type: "uint256";
-    }];
-    readonly name: "safeTransferFrom";
-    readonly outputs: readonly [];
-    readonly stateMutability: "pure";
-    readonly type: "function";
-}, {
-    readonly inputs: readonly [{
-        readonly internalType: "address";
-        readonly name: "";
-        readonly type: "address";
-    }, {
-        readonly internalType: "address";
-        readonly name: "";
-        readonly type: "address";
-    }, {
-        readonly internalType: "uint256";
-        readonly name: "";
-        readonly type: "uint256";
-    }, {
-        readonly internalType: "bytes";
-        readonly name: "";
-        readonly type: "bytes";
-    }];
-    readonly name: "safeTransferFrom";
-    readonly outputs: readonly [];
-    readonly stateMutability: "pure";
-    readonly type: "function";
-}, {
-    readonly inputs: readonly [{
-        readonly internalType: "address";
-        readonly name: "";
-        readonly type: "address";
-    }, {
-        readonly internalType: "bool";
-        readonly name: "";
-        readonly type: "bool";
-    }];
-    readonly name: "setApprovalForAll";
-    readonly outputs: readonly [];
-    readonly stateMutability: "pure";
-    readonly type: "function";
-}, {
-    readonly inputs: readonly [{
-        readonly internalType: "bytes4";
-        readonly name: "interfaceId";
-        readonly type: "bytes4";
-    }];
-    readonly name: "supportsInterface";
-    readonly outputs: readonly [{
-        readonly internalType: "bool";
-        readonly name: "";
-        readonly type: "bool";
-    }];
-    readonly stateMutability: "pure";
-    readonly type: "function";
-}, {
-    readonly inputs: readonly [];
-    readonly name: "symbol";
-    readonly outputs: readonly [{
-        readonly internalType: "string";
-        readonly name: "";
-        readonly type: "string";
-    }];
-    readonly stateMutability: "view";
-    readonly type: "function";
-}, {
-    readonly inputs: readonly [{
-        readonly internalType: "address";
-        readonly name: "";
-        readonly type: "address";
-    }];
-    readonly name: "tiers";
-    readonly outputs: readonly [{
-        readonly internalType: "enum CreditTierNFT.Tier";
-        readonly name: "";
-        readonly type: "uint8";
-    }];
-    readonly stateMutability: "view";
-    readonly type: "function";
-}, {
-    readonly inputs: readonly [{
-        readonly internalType: "uint256";
-        readonly name: "tokenId";
-        readonly type: "uint256";
-    }];
-    readonly name: "tokenURI";
-    readonly outputs: readonly [{
-        readonly internalType: "string";
-        readonly name: "";
-        readonly type: "string";
     }];
     readonly stateMutability: "view";
     readonly type: "function";
@@ -1282,24 +1159,6 @@ declare const CreditTierNFTABI: readonly [{
         readonly type: "uint256";
     }];
     readonly stateMutability: "view";
-    readonly type: "function";
-}, {
-    readonly inputs: readonly [{
-        readonly internalType: "address";
-        readonly name: "";
-        readonly type: "address";
-    }, {
-        readonly internalType: "address";
-        readonly name: "";
-        readonly type: "address";
-    }, {
-        readonly internalType: "uint256";
-        readonly name: "";
-        readonly type: "uint256";
-    }];
-    readonly name: "transferFrom";
-    readonly outputs: readonly [];
-    readonly stateMutability: "pure";
     readonly type: "function";
 }];
 

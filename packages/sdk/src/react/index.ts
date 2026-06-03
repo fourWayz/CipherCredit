@@ -9,7 +9,7 @@ import type {
   PoolStats, RepaymentStats, SignalResult,
 } from '../types'
 
-//  SDK instance hook ─
+// ── SDK instance hook ─────────────────────────────────────────────────────────
 
 /**
  * Returns a `CipherCreditClient` scoped to the connected wallet's chain,
@@ -29,7 +29,7 @@ export function useCipherCredit(): CipherCreditClient | null {
   }, [publicClient, chainId])
 }
 
-//  Generic async data hook ─
+// ── Generic async data hook ───────────────────────────────────────────────────
 
 type AsyncState<T> = { data: T | undefined; loading: boolean; error: string | null; refetch: () => void }
 
@@ -55,7 +55,7 @@ function useAsync<T>(factory: (() => Promise<T>) | null | undefined): AsyncState
   return { data, loading, error, refetch }
 }
 
-//  Domain hooks 
+// ── Domain hooks ──────────────────────────────────────────────────────────────
 
 /**
  * Credit tier info for a borrower — None / Bronze / Silver / Gold.
@@ -150,7 +150,7 @@ export function useBorrowerProfile(pool?: Address): AsyncState<BorrowerProfile> 
   return useAsync(fn)
 }
 
-//  Re-exports for convenience 
+// ── Re-exports for convenience ────────────────────────────────────────────────
 
 export { CipherCreditClient } from '../client'
 export { previewScore, previewRate } from '../utils/signals'

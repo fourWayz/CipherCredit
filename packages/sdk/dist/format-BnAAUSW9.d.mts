@@ -41,7 +41,12 @@ interface SignalResult extends SignalInputs {
 interface PoolStats {
     liquidity: bigint;
     totalBorrowed: bigint;
-    totalDeposited: bigint;
+    totalLPBalance: bigint;
+    utilisationBps: number;
+}
+interface ProviderStats {
+    balance: bigint;
+    shares: bigint;
 }
 interface ChainConfig {
     chainId: number;
@@ -112,6 +117,20 @@ declare class CipherCreditClient {
      */
     getRepaymentStats(borrower: Address): Promise<RepaymentStats>;
     getPoolStats(): Promise<PoolStats>;
+    /**
+     * Current ETH balance and share count for a liquidity provider.
+     * `balance` includes accrued yield — it will exceed the original deposit once interest accrues.
+     */
+    getProviderStats(provider: Address): Promise<ProviderStats>;
+    /**
+     * One-call composability check for external protocols.
+     * Returns true iff the borrower's credit tier meets `minTier` and their data
+     * is no older than `maxAgeDays` (pass 0 for no freshness check).
+     * @param minTier  1=Bronze, 2=Silver, 3=Gold
+     */
+    verifyCreditTier(borrower: Address, minTier: 1 | 2 | 3, maxAgeDays?: number): Promise<boolean>;
+    /** Unix timestamp of the borrower's most recent credit data submission (alias for dataUpdatedAt). */
+    lastScoreUpdate(borrower: Address): Promise<bigint>;
     /**
      * Fetch normalised credit signals from the chain for `borrower`.
      * Returns raw wallet metrics alongside the FHE score preview and estimated rate.

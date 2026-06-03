@@ -28,7 +28,7 @@ export class CipherCreditClient {
     this.config = cfg
   }
 
-  //  Credit verification 
+  // ── Credit verification ────────────────────────────────────────────────────
 
   /** True if `borrower` has submitted credit data to the registry. */
   hasData(borrower: Address): Promise<boolean> {
@@ -60,7 +60,7 @@ export class CipherCreditClient {
     return Number(await this.read('registry', CreditScoreRegistryABI, 'getRevealedRate', [borrower]))
   }
 
-  //  Credit tier 
+  // ── Credit tier ────────────────────────────────────────────────────────────
 
   /** Returns the full tier info for the borrower's soul-bound CreditTierNFT. */
   async getTier(borrower: Address): Promise<CreditTierInfo> {
@@ -86,7 +86,7 @@ export class CipherCreditClient {
     return TIER_ORDER[tier.name] >= TIER_ORDER[minTier]
   }
 
-  //  Loan state ─
+  // ── Loan state ─────────────────────────────────────────────────────────────
 
   /**
    * Returns the active loan for `borrower`, or `null` if none exists.
@@ -125,7 +125,7 @@ export class CipherCreditClient {
     return this.read('pool', LendingPoolABI, 'totalRepaymentDue', [borrower])
   }
 
-  //  Repayment history 
+  // ── Repayment history ──────────────────────────────────────────────────────
 
   /**
    * On-chain repayment and default counters for `borrower`.
@@ -141,7 +141,7 @@ export class CipherCreditClient {
     return { repaymentCount: rc, defaultCount: dc, healthScore: healthScore(rc, dc) }
   }
 
-  //  Pool stats ─
+  // ── Pool stats ─────────────────────────────────────────────────────────────
 
   async getPoolStats(): Promise<PoolStats> {
     const [liquidity, totalBorrowed, totalLPBalance, utilisationBps] = await Promise.all([
@@ -160,7 +160,7 @@ export class CipherCreditClient {
   async getProviderStats(provider: Address): Promise<ProviderStats> {
     const [balance, shares] = await Promise.all([
       this.read('pool', LendingPoolABI, 'providerBalance', [provider]),
-      this.read('pool', LendingPoolABI, 'providerShares' as never, [provider]),
+      this.read('pool', LendingPoolABI, 'providerShares', [provider]),
     ])
     return { balance, shares }
   }
@@ -181,7 +181,7 @@ export class CipherCreditClient {
     return this.read('registry', CreditScoreRegistryABI, 'lastScoreUpdate', [borrower])
   }
 
-  //  Signals & score preview 
+  // ── Signals & score preview ────────────────────────────────────────────────
 
   /**
    * Fetch normalised credit signals from the chain for `borrower`.
@@ -198,7 +198,7 @@ export class CipherCreditClient {
   /** Preview interest rate (bps) from normalised inputs. No RPC call. */
   previewRate(inputs: SignalInputs): number { return previewRate(inputs) }
 
-  //  Full borrower profile 
+  // ── Full borrower profile ──────────────────────────────────────────────────
 
   /**
    * Single call that aggregates all on-chain data for a borrower.
@@ -231,7 +231,7 @@ export class CipherCreditClient {
     return profile
   }
 
-  //  Private helpers 
+  // ── Private helpers ────────────────────────────────────────────────────────
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private read(contract: 'registry' | 'pool' | 'nft', abi: any, functionName: string, args: unknown[]): Promise<any> {
